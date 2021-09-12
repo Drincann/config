@@ -1,0 +1,12 @@
+keycode 66 = Mode_switch
+
+keycode 44 = j J Left Left 
+keycode 45 = k K Down Down
+keycode 31 = i I Up Up
+keycode 46 = l L Right Right
+
+keycode  40 = d D Prior Prior
+keycode  41 = f F Next Next
+
+keycode  26 = e E Home Home
+keycode  27 = r R End End
