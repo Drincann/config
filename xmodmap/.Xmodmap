@@ -1,8 +1,9 @@
 keycode 66 = Mode_switch
+! keycode 31 = i I i I
 
-keycode 44 = j J Left Left 
-keycode 45 = k K Down Down
-keycode 31 = i I Up Up
+keycode 43 = h H Left Left 
+keycode 44 = j J Down Down
+keycode 45 = k K Up Up
 keycode 46 = l L Right Right
 
 keycode  40 = d D Prior Prior
@@ -10,3 +11,14 @@ keycode  41 = f F Next Next
 
 keycode  26 = e E Home Home
 keycode  27 = r R End End
+
+
+
+! keycode 110 = Home NoSymbol Home NoSymbol Home
+! keycode 111 = Up NoSymbol Up NoSymbol Up
+! keycode 112 = Prior NoSymbol Prior NoSymbol Prior
+! keycode 113 = j j j
+! keycode 114 = Right NoSymbol Right NoSymbol Right
+! keycode 115 = End NoSymbol End NoSymbol End
+! keycode 116 = Down NoSymbol Down NoSymbol Down
+! keycode 117 = Next NoSymbol Next NoSymbol Next
