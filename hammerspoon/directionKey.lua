@@ -31,11 +31,13 @@ log = hs.logger.new("script", "debug")
 hs.alert.defaultStyle["atScreenEdge"] = 1
 eventDown = hs.eventtap.new({hs.eventtap.event.types.otherMouseDown},
                             function(e)
+    log.i(e:getProperty(hs.eventtap.event.properties['mouseEventButtonNumber']))
     if e:getProperty(hs.eventtap.event.properties['mouseEventButtonNumber']) ==
         capslock then
         capState = true
         hs.alert.closeAll()
-        hs.alert(capState)
+        -- 不消失
+        hs.alert.show('dir mod',{atScreenEdge=2, textFont="Fira Code", textSize=20}, 10000)
         log.i("capslock toggle")
         return true
     end
@@ -47,7 +49,7 @@ eventUp = hs.eventtap.new({hs.eventtap.event.types.otherMouseUp}, function(e)
         capslock then
         capState = false
         hs.alert.closeAll()
-        hs.alert(capState)
+        -- hs.alert.show(capState,{atScreenEdge=2, textFont="Fira Code", textSize=20}, 'infi')
         return true
     end
 
