@@ -11,7 +11,7 @@ pastboard.watcher = hs.pasteboard.watcher.new(function(content)
         pastboard.iscopy = false
         return
     end
-    if #history >= pastboard.max then
+    if #pastboard.history >= pastboard.max then
         table.remove(pastboard.history, #pastboard.history)
         table.remove(pastboard.minifyHistory, #pastboard.inifyHistory)
     end
