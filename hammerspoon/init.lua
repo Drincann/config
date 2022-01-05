@@ -1,1 +1,2 @@
+require('pasteboardHistory')
 require('directionKey')
