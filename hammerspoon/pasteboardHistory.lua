@@ -12,8 +12,8 @@ pastboard.watcher = hs.pasteboard.watcher.new(function(content)
         return
     end
     if #pastboard.history >= pastboard.max then
-        table.remove(pastboard.history, #pastboard.history)
-        table.remove(pastboard.minifyHistory, #pastboard.inifyHistory)
+        table.remove(pastboard.history, pastboard.max)
+        table.remove(pastboard.minifyHistory, pastboard.max)
     end
     table.insert(pastboard.history, 1, content)
     table.insert(pastboard.minifyHistory, 1, string.sub(content, 1, pastboard.maxMinifyLength))
@@ -64,7 +64,7 @@ pastboard.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, func
             textFont = "Fira Code",
             textSize = 20,
             padding = 50
-        })
+        }, 'infinite')
         return true
     end
     if altState and pastboard.numkeys[currKey] then
