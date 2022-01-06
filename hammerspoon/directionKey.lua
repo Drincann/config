@@ -39,7 +39,7 @@ directionkey.eventDown = hs.eventtap.new({hs.eventtap.event.types.otherMouseDown
             atScreenEdge = 2,
             textFont = "Fira Code",
             textSize = 20
-        }, 10000)
+        }, 'infinite')
         -- log.i("capslock toggle")
         return true
     end
