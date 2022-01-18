@@ -18,6 +18,7 @@ end
 
 directionkey.capslock = 31
 directionkey.J = hs.keycodes.map["J"]
+directionkey.H = hs.keycodes.map["H"]
 directionkey.K = hs.keycodes.map["K"]
 directionkey.L = hs.keycodes.map["L"]
 directionkey.I = hs.keycodes.map["I"]
@@ -65,11 +66,11 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
         local currKey = e:getKeyCode()
 
         -- directionkey.log.i("otherkey down")
-        if currKey == directionkey.J then
+        if currKey == directionkey.H then
             sendKey(nil, "left")
             return true
         end
-        if currKey == directionkey.K then
+        if currKey == directionkey.J then
             sendKey(nil, "down")
             return true
         end
@@ -77,7 +78,7 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
             sendKey(nil, "right")
             return true
         end
-        if currKey == directionkey.I then
+        if currKey == directionkey.K then
             sendKey(nil, "up")
             return true
         end
