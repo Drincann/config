@@ -7,6 +7,9 @@ pastboard.iscopy = false
 pastboard.max = 10
 pastboard.maxMinifyLength = 50
 pastboard.watcher = hs.pasteboard.watcher.new(function(content)
+    if content == nil then
+        return
+    end
     if pastboard.iscopy then
         pastboard.iscopy = false
         return
