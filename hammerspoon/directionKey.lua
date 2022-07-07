@@ -28,6 +28,7 @@ directionkey.D = hs.keycodes.map["D"]
 directionkey.F = hs.keycodes.map["F"]
 directionkey.ALT = hs.keycodes.map["alt"]
 directionkey.CMD = hs.keycodes.map["cmd"]
+directionkey.ESC = hs.keycodes.map["escape"]
 directionkey.capState = false;
 directionkey.log = hs.logger.new("script", "debug")
 directionkey.eventDown = hs.eventtap.new({hs.eventtap.event.types.otherMouseDown}, function(e)
@@ -66,6 +67,10 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
         local currKey = e:getKeyCode()
 
         -- directionkey.log.i("otherkey down")
+        if currKey == directionkey.ESC then
+            sendKey(nil, "`")
+            return true
+        end
         if currKey == directionkey.H then
             sendKey(nil, "left")
             return true
