@@ -28,11 +28,20 @@ directionkey.D = hs.keycodes.map["D"]
 directionkey.F = hs.keycodes.map["F"]
 directionkey.ALT = hs.keycodes.map["alt"]
 directionkey.CMD = hs.keycodes.map["cmd"]
+directionkey.SHIFT = hs.keycodes.map["shift"]
 directionkey.ESC = hs.keycodes.map["escape"]
+directionkey.shiftState = false;
 directionkey.capState = false;
 directionkey.log = hs.logger.new("script", "debug")
-directionkey.eventDown = hs.eventtap.new({hs.eventtap.event.types.otherMouseDown}, function(e)
-    -- log.i(e:getProperty(hs.eventtap.event.properties['mouseEventButtonNumber']))
+
+directionkey.eventMouseDownAndFlagChange = hs.eventtap.new({hs.eventtap.event.types.otherMouseDown,hs.eventtap.event.types.flagsChanged}, function(e)
+    -- log.i(e:getProperty(hs.eventtap.evento.oroperties['mouseEventButtonNumber']))
+    -- directionkey.log.i(e:getKeyCode())
+    local currKey = e:getKeyCode()
+    if currKey == directionkey.SHIFT then
+        directionkey.shiftState = not directionkey.shiftState 
+        return false
+    end 
     if e:getProperty(hs.eventtap.event.properties['mouseEventButtonNumber']) == directionkey.capslock then
         directionkey.capState = true
         hs.alert.closeAll()
@@ -42,13 +51,13 @@ directionkey.eventDown = hs.eventtap.new({hs.eventtap.event.types.otherMouseDown
             textFont = "Fira Code",
             textSize = 20
         }, 'infinite')
-        -- log.i("capslock toggle")
+        -- directionkey.log.i("capslock toggle")
         return true
     end
 end)
-directionkey.eventDown:start()
+directionkey.eventMouseDownAndFlagChange:start()
 
-directionkey.eventUp = hs.eventtap.new({hs.eventtap.event.types.otherMouseUp}, function(e)
+directionkey.eventMouseUp = hs.eventtap.new({hs.eventtap.event.types.otherMouseUp}, function(e)
     -- directionkey.log.i(e:getProperty(hs.eventtap.event.properties['mouseEventButtonNumber']))
     if e:getProperty(hs.eventtap.event.properties['mouseEventButtonNumber']) == directionkey.capslock then
         directionkey.capState = false
@@ -56,15 +65,23 @@ directionkey.eventUp = hs.eventtap.new({hs.eventtap.event.types.otherMouseUp}, f
         -- hs.alert.show(capState,{atScreenEdge=2, textFont="Fira Code", textSize=20}, 'infi')
         return true
     end
-
 end)
-directionkey.eventUp:start()
+directionkey.eventMouseUp:start()
+
+
 
 directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
-    -- directionkey.log.i(e:getKeyCode())
+    directionkey.log.i(e:getKeyCode())
+    local currKey = e:getKeyCode()
 
+    if directionkey.shiftState then
+        -- directionkey.log.i("otherkey down")
+        if currKey == directionkey.ESC then
+            sendKey("shift" , 50) -- 波浪
+            return true
+        end
+    end
     if directionkey.capState then
-        local currKey = e:getKeyCode()
 
         -- directionkey.log.i("otherkey down")
         if currKey == directionkey.ESC then
