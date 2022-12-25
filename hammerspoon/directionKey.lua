@@ -106,10 +106,12 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
         end
         if currKey == directionkey.E then
             sendKey(nil, "home")
+            sendKey({"cmd"}, "left")
             return true
         end
         if currKey == directionkey.R then
             sendKey(nil, "end")
+            sendKey({"cmd"}, "right")
             return true
         end
         if currKey == directionkey.D then
