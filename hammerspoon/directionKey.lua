@@ -105,13 +105,19 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
             return true
         end
         if currKey == directionkey.E then
-            sendKey(nil, "home")
-            sendKey({"cmd"}, "left")
+            if string.find('alacritty', string.lower(hs.window.focusedWindow():application():name())) then
+                sendKey(nil, "home")
+            else
+                sendKey({"cmd"}, 'left')
+            end
             return true
         end
         if currKey == directionkey.R then
-            sendKey(nil, "end")
-            sendKey({"cmd"}, "right")
+            if string.find('alacritty', string.lower(hs.window.focusedWindow():application():name())) then
+                sendKey(nil, "end")
+            else
+                sendKey({"cmd"}, 'right')
+            end
             return true
         end
         if currKey == directionkey.D then
