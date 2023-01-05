@@ -100,7 +100,7 @@ hs.hotkey.bind({"shift", "cmd" }, "o", function()
 end)
 
 -- bottom left
-hs.hotkey.bind({"shift", "cmd" }, "n", function()
+hs.hotkey.bind({"shift", "cmd" }, "m", function()
   local win = hs.window.focusedWindow()
   local max = win:screen():frame()
   local f = win:frame()
