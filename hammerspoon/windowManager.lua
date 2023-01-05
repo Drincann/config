@@ -58,7 +58,7 @@ hs.hotkey.bind({"shift", "cmd" }, "f", function()
   win:toggleFullScreen()
 end)
 
-hs.hotkey.bind({"shift", "cmd" }, "c", function()
+hs.hotkey.bind({"option", "shift", "cmd" }, "c", function()
   local win = hs.window.focusedWindow()
   win:centerOnScreen()
 end)
