@@ -124,7 +124,7 @@ hs.hotkey.bind({"shift", "cmd" }, ".", function()
 end)
 
 -- bigger
-hs.hotkey.bind({"shift", "cmd" }, "=", function()
+hs.hotkey.bind({"option", "shift", "cmd" }, "=", function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
   f.w = f.w * 1.1
@@ -137,7 +137,7 @@ hs.hotkey.bind({"shift", "cmd" }, "=", function()
 end)
 
 -- smaller
-hs.hotkey.bind({"shift", "cmd" }, "-", function()
+hs.hotkey.bind({"option", "shift", "cmd" }, "-", function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
   f.w = f.w * 0.9
