@@ -64,13 +64,13 @@ hs.hotkey.bind({"option", "shift", "cmd" }, "c", function()
 end)
 
 -- next window
-hs.hotkey.bind({"option", "shift", "cmd" }, "]", function()
+hs.hotkey.bind({"shift", "cmd" }, ";", function()
   local win = hs.window.focusedWindow()
   win:focusWindowEast()
 end)
 
 -- previous window
-hs.hotkey.bind({"option", "shift", "cmd" }, "[", function()
+hs.hotkey.bind({"shift", "cmd" }, "'", function()
   local win = hs.window.focusedWindow()
   win:focusWindowWest()
 end)
@@ -144,6 +144,46 @@ hs.hotkey.bind({"option", "shift", "cmd" }, "-", function()
   f.h = f.h * 0.9
   -- position
   f.x = f.x + (f.w * 0.05)
+  f.y = f.y + (f.h * 0.05)
+  win:setFrame(f)
+end)
+
+-- x expand
+hs.hotkey.bind({"option", "shift", "cmd" }, "'", function()
+  local win = hs.window.focusedWindow()
+  local f = win:frame()
+  f.w = f.w * 1.1
+  -- position
+  f.x = f.x - (f.w * 0.05)
+  win:setFrame(f)
+end)
+
+-- x shrink
+hs.hotkey.bind({"option", "shift", "cmd" }, ";", function()
+  local win = hs.window.focusedWindow()
+  local f = win:frame()
+  f.w = f.w * 0.9
+  -- position
+  f.x = f.x + (f.w * 0.05)
+  win:setFrame(f)
+end)
+
+-- y expand
+hs.hotkey.bind({"option", "shift", "cmd" }, "p", function()
+  local win = hs.window.focusedWindow()
+  local f = win:frame()
+  f.h = f.h * 1.1
+  -- position
+  f.y = f.y - (f.h * 0.05)
+  win:setFrame(f)
+end)
+
+-- y shrink
+hs.hotkey.bind({"option", "shift", "cmd" }, "/", function()
+  local win = hs.window.focusedWindow()
+  local f = win:frame()
+  f.h = f.h * 0.9
+  -- position
   f.y = f.y + (f.h * 0.05)
   win:setFrame(f)
 end)
