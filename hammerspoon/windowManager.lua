@@ -64,13 +64,13 @@ hs.hotkey.bind({"option", "shift", "cmd" }, "c", function()
 end)
 
 -- next window
-hs.hotkey.bind({"shift", "cmd" }, ";", function()
+hs.hotkey.bind({"shift", "cmd" }, "'", function()
   local win = hs.window.focusedWindow()
   win:focusWindowEast()
 end)
 
 -- previous window
-hs.hotkey.bind({"shift", "cmd" }, "'", function()
+hs.hotkey.bind({"shift", "cmd" }, ";", function()
   local win = hs.window.focusedWindow()
   win:focusWindowWest()
 end)
