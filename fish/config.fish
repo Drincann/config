@@ -131,27 +131,34 @@ end
 
 # soft or hard reset to any ref
 # usage:
-# gsinc [f] [branch] —— git reset --[:soft|:f:hard] [branch:branch|:current branch]
+# gsinc [f] [upstream] [branch] —— git reset --[:soft|:f:hard] [upstream:upstream|:default upstream]/[branch:branch|:current branch]
 # example:
-# gsinc f master —— git reset --hard master
-# gsinc master   —— git reset --soft master
-# gsinc          —— git reset --soft $currentBranch
-# gsinc f        —— git reset --hard $currentBranch  
+# gsinc f upstream —— git reset --hard upstream/currbranch
+# gsinc upstream   —— git reset --soft master
+# gsinc          —— git reset --soft upstream/currbranch
+# gsinc f        —— git reset --hard upstream/currbranch 
 function gsinc
     set softOrHard soft
-    set branch (git rev-parse --abbrev-ref HEAD)
-    if test (count $argv) -eq 0
+    set upstream origin
+    set branch (git branch --show-current)
+
+    if not test (count $argv) -eq 0
         if test $argv[1] = f
             set softOrHard hard
-            if test -z $argv[2]
-                j else
-                set branch $argv[2]
+            if not test -z $argv[2]
+                set upstream $argv[2]
+                if not test -z $argv[3]
+                    set branch $argv[3]
+                end
             end
         else
-            set branch $argv[1]
+            set upstream $argv[1]
+            if not test -z $argv[2]
+                set branch $argv[2]
+            end
         end
     end
 
-    echo "git reset --$softOrHard $branch"
-    git reset --$softOrHard $branch
+    echo "git reset --$softOrHard $upstream/$branch"
+    git reset --$softOrHard $upstream/$branch
 end
