@@ -89,6 +89,7 @@ alias gbd "git branch -d"
 
 # git lg
 alias lg "git lg"
+alias gl "git lg"
 
 # git search
 alias gsc "git lg -S" # search by file content
