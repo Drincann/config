@@ -48,14 +48,21 @@ alias gap "git add -p"
 # git commit 
 # usage: 
 # gc                  —— git commit 
-# gc "commit message" —— git commit -m "commit message"
+# gc commit message   —— git commit -m "commit message"
+# gc --amned          —— git commit --amend
 function gc
     if test -z "$argv"
         echo "git commit"
         git commit
     else
-        echo "git commit -m $argv"
-        git commit -m "$argv"
+        # start with -
+        if test "$(echo $argv | cut -c 1)" = -
+            echo "git commit $argv"
+            git commit $argv
+        else
+            echo "git commit -m \"$argv\""
+            git commit -m "$argv"
+        end
     end
 end
 
@@ -69,7 +76,7 @@ alias gps "git push"
 # gri [hash]   —— git rebase -i [hash]
 function gri
     # if length of $argv is less eq than 7 and $argv is a number 
-    if test (echo $argv | wc -c) -le 7 -a (echo $argv | grep -E '^[0-9]+$')
+    if test \( "$(echo $argv | wc -c)" -le 7 \) -a \( ! -z "$(echo $argv | grep -E '^[0-9]+$')" \)
         echo "git rebase -i HEAD~$argv"
         git rebase -i HEAD~$argv
     else
@@ -112,14 +119,14 @@ function grs
         if test $argv[1] = f
             set softOrHard hard
             if not test -z $argv[2]
-                if test (echo $argv[2] | wc -c) -le 7 -a (echo $argv[2] | grep -E '^[0-9]+$')
+                if test \( "$(echo $argv[2] | wc -c)" -le 7 \) -a \( ! -z "$(echo $argv[2] | grep -E '^[0-9]+$')" \)
                     set ref HEAD~$argv[2]
                 else
                     set ref $argv[2]
                 end
             end
         else
-            if test (echo $argv[1] | wc -c) -le 7 -a (echo $argv[1] | grep -E '^[0-9]+$')
+            if test \( "$(echo $argv[1] | wc -c)" -le 7 \) -a \( ! -z "$(echo $argv[1] | grep -E '^[0-9]+$')" \)
                 set ref HEAD~$argv[1]
             else
                 set ref $argv[1]
