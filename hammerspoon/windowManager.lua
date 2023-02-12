@@ -42,17 +42,6 @@ hs.hotkey.bind({"shift", "cmd" }, "j", function()
   win:setFrame(f)
 end)
 
-hs.hotkey.bind({"shift", "cmd" }, "m", function()
-  local win = hs.window.focusedWindow()
-  local max = win:screen():frame()
-  local f = win:frame()
-  f.x = max.x
-  f.y = max.y
-  f.w = max.w
-  f.h = max.h
-  win:setFrame(f)
-end)
-
 hs.hotkey.bind({"shift", "cmd" }, "f", function()
   local win = hs.window.focusedWindow()
   win:toggleFullScreen()
@@ -123,17 +112,27 @@ hs.hotkey.bind({"shift", "cmd" }, ".", function()
   win:setFrame(f)
 end)
 
+-- full screen
+hs.hotkey.bind({"shift", "cmd" }, "i", function()
+  local win = hs.window.focusedWindow()
+  local max = win:screen():frame()
+  local f = win:frame()
+  f.x = max.x
+  f.y = max.y
+  f.w = max.w
+  f.h = max.h
+  win:setFrame(f)
+end)
+
 -- bigger
 hs.hotkey.bind({"option", "shift", "cmd" }, "=", function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
+  f.w = f.w * 1.1
+  f.h = f.h * 1.1
   -- position
   f.x = f.x - (f.w * 0.05)
   f.y = f.y - (f.h * 0.05)
-  
-  f.w = f.w * 1.1
-  f.h = f.h * 1.1
-
 
   win:setFrame(f)
 end)
@@ -142,12 +141,11 @@ end)
 hs.hotkey.bind({"option", "shift", "cmd" }, "-", function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
+  f.w = f.w * 0.9
+  f.h = f.h * 0.9
   -- position
   f.x = f.x + (f.w * 0.05)
   f.y = f.y + (f.h * 0.05)
-
-  f.w = f.w * 0.9
-  f.h = f.h * 0.9
   win:setFrame(f)
 end)
 
@@ -155,10 +153,9 @@ end)
 hs.hotkey.bind({"option", "shift", "cmd" }, "'", function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
+  f.w = f.w * 1.1
   -- position
   f.x = f.x - (f.w * 0.05)
-
-  f.w = f.w * 1.1
   win:setFrame(f)
 end)
 
@@ -166,10 +163,9 @@ end)
 hs.hotkey.bind({"option", "shift", "cmd" }, ";", function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
+  f.w = f.w * 0.9
   -- position
   f.x = f.x + (f.w * 0.05)
-
-  f.w = f.w * 0.9
   win:setFrame(f)
 end)
 
@@ -177,10 +173,9 @@ end)
 hs.hotkey.bind({"option", "shift", "cmd" }, "p", function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
+  f.h = f.h * 1.1
   -- position
   f.y = f.y - (f.h * 0.05)
-
-  f.h = f.h * 1.1
   win:setFrame(f)
 end)
 
@@ -188,10 +183,9 @@ end)
 hs.hotkey.bind({"option", "shift", "cmd" }, "/", function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
+  f.h = f.h * 0.9
   -- position
   f.y = f.y + (f.h * 0.05)
-  
-  f.h = f.h * 0.9
   win:setFrame(f)
 end)
 
