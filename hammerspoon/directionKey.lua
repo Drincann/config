@@ -30,6 +30,7 @@ directionkey.ALT = hs.keycodes.map["alt"]
 directionkey.CMD = hs.keycodes.map["cmd"]
 directionkey.SHIFT = hs.keycodes.map["shift"]
 directionkey.ESC = hs.keycodes.map["escape"]
+directionkey.showTerminal = hs.keycodes.map["t"]
 directionkey.shiftState = false;
 directionkey.capState = false;
 directionkey.log = hs.logger.new("script", "debug")
@@ -126,6 +127,25 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
         end
         if currKey == directionkey.F then
             sendKey({"alt"}, "right")
+            return true
+        end
+        if currKey == directionkey.showTerminal then
+            local alacritty = hs.application.find('Alacritty')
+            -- if alacritty is already focused, hide it
+            if hs.window.focusedWindow():application():name() == 'Alacritty' then
+                hs.application.find('Alacritty'):hide()
+                return true
+            end
+
+            -- if is not exist, launch it
+            if alacritty == nil then
+                hs.application.launchOrFocus('Alacritty')
+                alacritty = hs.application.find('Alacritty')
+            end
+
+            -- move to current screen and focus
+            alacritty:mainWindow():moveToScreen(hs.screen.mainScreen())
+            alacritty:mainWindow():focus()
             return true
         end
     end
