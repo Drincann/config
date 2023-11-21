@@ -143,8 +143,10 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
                 alacritty = hs.application.find('Alacritty')
             end
 
-            -- move to current screen and focus
-            alacritty:mainWindow():moveToScreen(hs.screen.mainScreen())
+            local currentSpace = hs.spaces.activeSpaceOnScreen()
+            hs.spaces.moveWindowToSpace(alacritty:mainWindow(), currentSpace)
+
+            -- focus it
             alacritty:mainWindow():focus()
             return true
         end
