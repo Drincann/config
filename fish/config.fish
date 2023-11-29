@@ -1,20 +1,39 @@
-# autojump
+# optional pyenv
+alias py "pyenv init - | source"
+
+# j command
 [ -f /opt/homebrew/share/autojump/autojump.fish ]; and source /opt/homebrew/share/autojump/autojump.fish
 
-# save my life
+#alias python python3
+# brew
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# fnm
+eval "$(fnm env --use-on-cd --version-file-strategy=recursive)"
+
+# locale
+if status --is-interactive
+    set -gx LANG zh_CN.UTF-8
+end
+
+# thefuck
+thefuck --alias | source
+
+# autojump
+# [ -f /opt/homebrew/share/autojump/autojump.fish ]; and source /opt/homebrew/share/autojump/autojump.fish # save my life
 alias rm=trash
 
 # greetings
-set -x fish_greeting "TODO:\n$(todo)"
+set -x fish_greeting "hello world\n"
 
 # chinese display problems after vscodev1.74.0 is updated
 # set -x LANG zh_CN.UTF-8 # still propblems in vim
-set -x LANG
+# set -x LANG
 
 # proxy
-set -x https_proxy http://127.0.0.1:7890
-set -x http_proxy http://127.0.0.1:7890
-set -x all_proxy socks5://127.0.0.1:7890
+#set -x https_proxy http://127.0.0.1:54631
+#set -x http_proxy http://127.0.0.1:54631
+#set -x all_proxy socks5://127.0.0.1:7890
 
 # script
 set -x SHROOT /Users/drincanngao/script/sh
@@ -23,6 +42,12 @@ set -x PATH $SHROOT:$PATH
 
 # fish reload
 alias fr "source ~/.config/fish/config.fish"
+
+# clear
+alias c clear
+
+# proxy off
+alias pof "networksetup -setwebproxystate Wi-Fi off ; networksetup -setsecurewebproxystate Wi-Fi off"
 
 # git alias
 alias g git
@@ -170,3 +195,16 @@ function gsinc
     echo "git reset --$softOrHard $upstream/$branch"
     git reset --$softOrHard $upstream/$branch
 end
+
+# short for git branch -f [branch] [hash]
+alias gmv "git branch -f"
+# short for git fetch --all
+alias gf "git fetch --all"
+# short for git checkout -b [branch]
+alias gb "git checkout -b"
+# short for git switch
+alias gsw "git switch"
+# short for git stash
+alias gss "git stash"
+# short for git stash pop
+alias gssp "git stash pop"
