@@ -73,17 +73,21 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
     directionkey.log.i(e:getKeyCode())
     local currKey = e:getKeyCode()
 
-    if currKey == directionkey.capslock and not directionkey.capState then
-        directionkey.capState = true
-        hs.alert.closeAll()
-        -- 不消失
-        hs.alert.show('dir mod', {
-            atScreenEdge = 2,
-            textFont = "Fira Code",
-            textSize = 20
-        }, 'infinite')
-        -- directionkey.log.i("capslock toggle")
-        return true
+    if currKey == directionkey.capslock then
+        if not directionkey.capState then
+            directionkey.capState = true
+            hs.alert.closeAll()
+            -- 不消失
+            hs.alert.show('dir mod', {
+                atScreenEdge = 2,
+                textFont = "Fira Code",
+                textSize = 20
+            }, 'infinite')
+            -- directionkey.log.i("capslock toggle")
+            return true
+        else
+            return true
+        end
     end
     if directionkey.shiftState then
         -- directionkey.log.i("otherkey down")
