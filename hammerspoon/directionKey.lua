@@ -16,7 +16,18 @@ end
 --     directionkey.log.i(event:isEnabled())
 -- end):start()
 
-directionkey.capslock = 31
+-- https://github.com/Hammerspoon/hammerspoon/issues/3512
+function key_remapping()
+    -- remap capslock to F13:
+    status = os.execute("hidutil property --set '{\"UserKeyMapping\":[{\"HIDKeyboardModifierMappingSrc\": 0x700000039, \"HIDKeyboardModifierMappingDst\": 0x700000068}]}'") 
+    if not status then
+        hs.dialog.blockAlert("Key remapping failed", "Check with:\nhidutil property --get UserKeyMapping")
+    end
+end
+key_remapping()
+
+-- remapping capslock to F13
+directionkey.capslock = hs.keycodes.map["F13"]
 directionkey.J = hs.keycodes.map["J"]
 directionkey.H = hs.keycodes.map["H"]
 directionkey.K = hs.keycodes.map["K"]
@@ -43,7 +54,26 @@ directionkey.eventMouseDownAndFlagChange = hs.eventtap.new({hs.eventtap.event.ty
         directionkey.shiftState = not directionkey.shiftState 
         return false
     end 
-    if e:getProperty(hs.eventtap.event.properties['mouseEventButtonNumber']) == directionkey.capslock then
+end)
+directionkey.eventMouseDownAndFlagChange:start()
+
+directionkey.eventKeyUp = hs.eventtap.new({hs.eventtap.event.types.keyUp}, function(e)
+    local currKey = e:getKeyCode()
+    if currKey == directionkey.capslock then
+        directionkey.capState = false
+        hs.alert.closeAll()
+        -- hs.alert.show(capState,{atScreenEdge=2, textFont="Fira Code", textSize=20}, 'infi')
+        return true
+    end
+end)
+directionkey.eventKeyUp:start()
+
+
+directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
+    directionkey.log.i(e:getKeyCode())
+    local currKey = e:getKeyCode()
+
+    if currKey == directionkey.capslock and not directionkey.capState then
         directionkey.capState = true
         hs.alert.closeAll()
         -- 不消失
@@ -55,26 +85,6 @@ directionkey.eventMouseDownAndFlagChange = hs.eventtap.new({hs.eventtap.event.ty
         -- directionkey.log.i("capslock toggle")
         return true
     end
-end)
-directionkey.eventMouseDownAndFlagChange:start()
-
-directionkey.eventMouseUp = hs.eventtap.new({hs.eventtap.event.types.otherMouseUp}, function(e)
-    -- directionkey.log.i(e:getProperty(hs.eventtap.event.properties['mouseEventButtonNumber']))
-    if e:getProperty(hs.eventtap.event.properties['mouseEventButtonNumber']) == directionkey.capslock then
-        directionkey.capState = false
-        hs.alert.closeAll()
-        -- hs.alert.show(capState,{atScreenEdge=2, textFont="Fira Code", textSize=20}, 'infi')
-        return true
-    end
-end)
-directionkey.eventMouseUp:start()
-
-
-
-directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
-    directionkey.log.i(e:getKeyCode())
-    local currKey = e:getKeyCode()
-
     if directionkey.shiftState then
         -- directionkey.log.i("otherkey down")
         if currKey == directionkey.ESC then
