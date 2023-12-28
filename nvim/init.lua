@@ -370,7 +370,10 @@ require("lazy").setup({
   },
 
   -- debugger
-  { 'LazyVim/LazyVim',      event = "VeryLazy", },
+  {
+    'LazyVim/LazyVim',
+    event = "VeryLazy",
+  },
   {
     "mfussenegger/nvim-dap",
     dependencies = {
@@ -436,13 +439,12 @@ require("lazy").setup({
           -- online, please don't ask me how to install them :)
           ensure_installed = {
             -- Update this to ensure that you have the debuggers for the langs you want
-            -- python
-            "pyright",
           },
         },
       },
     },
 
+    -- stylua: ignore
     keys = {
       { "<leader>dB", function() require("dap").set_breakpoint(vim.fn.input('Breakpoint condition: ')) end, desc = "Breakpoint Condition" },
       { "<leader>db", function() require("dap").toggle_breakpoint() end,                                    desc = "Toggle Breakpoint" },
@@ -475,8 +477,9 @@ require("lazy").setup({
         )
       end
     end,
-  }
+  },
 })
+
 
 
 vim.cmd.colorscheme 'onedark'
@@ -499,3 +502,8 @@ o.writebackup = false  -- Don't write backups.
 
 o.clipboard = "unnamed"
 -- o.undofile = true -- Persistent undo's across all session
+
+--
+local debugger_conf = require('debugger/conf')
+-- set conf to global
+debugger = debugger_conf
