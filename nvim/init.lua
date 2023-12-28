@@ -58,8 +58,8 @@ require("lazy").setup({
       local tabopts = { noremap = true, silent = true }
       -- Move to previous/next
       -- meta + [
-      tabmap('n', '<A-[>', '<Cmd>BufferNext<CR>', tabopts)
-      tabmap('n', '<A-]>', '<Cmd>BufferPrevious<CR>', tabopts)
+      tabmap('n', '<A-[>', '<Cmd>BufferPrevious<CR>', tabopts)
+      tabmap('n', '<A-]>', '<Cmd>BufferNext<CR>', tabopts)
       -- Re-order to previous/next
       tabmap('n', '<A-{>', '<Cmd>BufferMovePrevious<CR>', tabopts)
       tabmap('n', '<A-}>', '<Cmd>BufferMoveNext<CR>', tabopts)
