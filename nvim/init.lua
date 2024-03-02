@@ -226,6 +226,9 @@ require("lazy").setup({
       "williamboman/mason-lspconfig.nvim",
     },
     config = function()
+      require("mason").setup()
+      require("mason-lspconfig").setup()
+
       -- Use LspAttach autocommand to only map the following keys
       -- after the language server attaches to the current buffer
       vim.api.nvim_create_autocmd('LspAttach', {
@@ -282,7 +285,9 @@ require("lazy").setup({
       }
 
       lspconfig.pyright.setup {}
+      lspconfig.clangd.setup {}
       lspconfig.tsserver.setup {}
+      lspconfig.java_language_server.setup {}
 
       -- Set up lspconfig.
       local capabilities = require('cmp_nvim_lsp').default_capabilities()
@@ -295,6 +300,14 @@ require("lazy").setup({
       }
 
       lspconfig['tsserver'].setup {
+        capabilities = capabilities
+      }
+
+      lspconfig['java_language_server'].setup {
+        capabilities = capabilities
+      }
+
+      lspconfig['clangd'].setup {
         capabilities = capabilities
       }
     end,
