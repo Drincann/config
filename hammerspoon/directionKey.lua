@@ -11,8 +11,7 @@ end
 -- local event = nil
 -- event = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function()
 --     counter = counter + 1
---     hs.alert.closeAll()
---     hs.alert(counter)
+--     hs.alert.closeAll() hs.alert(counter)
 --     directionkey.log.i(event:isEnabled())
 -- end):start()
 
@@ -22,10 +21,24 @@ function key_remapping()
     status = os.execute("hidutil property --set '{\"UserKeyMapping\":[{\"HIDKeyboardModifierMappingSrc\": 0x700000039, \"HIDKeyboardModifierMappingDst\": 0x700000068}]}'") 
     if not status then
         hs.dialog.blockAlert("Key remapping failed", "Check with:\nhidutil property --get UserKeyMapping")
+        return
     end
+    hs.alert.show("Key remapping successful")
 end
 key_remapping()
 
+directionkey._0 = hs.keycodes.map["0"]
+directionkey._1 = hs.keycodes.map["1"]
+directionkey._2 = hs.keycodes.map["2"]
+directionkey._3 = hs.keycodes.map["3"]
+directionkey._4 = hs.keycodes.map["4"]
+directionkey._5 = hs.keycodes.map["5"]
+directionkey._6 = hs.keycodes.map["6"]
+directionkey._7 = hs.keycodes.map["7"]
+directionkey._8 = hs.keycodes.map["8"]
+directionkey._9 = hs.keycodes.map["9"]
+directionkey.B = hs.keycodes.map["B"]
+directionkey.C = hs.keycodes.map["C"]
 -- remapping capslock to F13
 directionkey.capslock = hs.keycodes.map["F13"]
 directionkey.J = hs.keycodes.map["J"]
@@ -37,7 +50,22 @@ directionkey.E = hs.keycodes.map["E"]
 directionkey.R = hs.keycodes.map["R"]
 directionkey.D = hs.keycodes.map["D"]
 directionkey.F = hs.keycodes.map["F"]
+directionkey.M = hs.keycodes.map["M"]
+directionkey.W = hs.keycodes.map["W"]
+directionkey.N = hs.keycodes.map["N"]
+directionkey.P = hs.keycodes.map["P"]
+directionkey.N = hs.keycodes.map["N"]
+directionkey.Q = hs.keycodes.map["Q"]
+directionkey.Y = hs.keycodes.map["Y"]
+directionkey.U = hs.keycodes.map["U"]
+directionkey.I = hs.keycodes.map["I"]
+directionkey.O = hs.keycodes.map["O"]
+directionkey.Z = hs.keycodes.map["Z"]
+directionkey.X = hs.keycodes.map["X"]
+directionkey.COMMA = hs.keycodes.map[","]
+directionkey.DOT = hs.keycodes.map["."]
 directionkey.ALT = hs.keycodes.map["alt"]
+directionkey.ENTER = hs.keycodes.map["return"]
 directionkey.CMD = hs.keycodes.map["cmd"]
 directionkey.SHIFT = hs.keycodes.map["shift"]
 directionkey.ESC = hs.keycodes.map["escape"]
@@ -59,6 +87,7 @@ directionkey.eventMouseDownAndFlagChange:start()
 
 directionkey.eventKeyUp = hs.eventtap.new({hs.eventtap.event.types.keyUp}, function(e)
     local currKey = e:getKeyCode()
+    -- directionkey.log.i(currKey)
     if currKey == directionkey.capslock then
         directionkey.capState = false
         hs.alert.closeAll()
@@ -69,8 +98,8 @@ end)
 directionkey.eventKeyUp:start()
 
 
-directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
-    directionkey.log.i(e:getKeyCode())
+directionkey.eventKeyDownDefault = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
+    -- directionkey.log.i(e:getKeyCode())
     local currKey = e:getKeyCode()
 
     if currKey == directionkey.capslock then
@@ -166,6 +195,322 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
         end
     end
 end)
-directionkey.eventKeyDown:start()
+directionkey.eventKeyDownDefault:start()
+
+local function resetYabaiLeader()
+  directionkey.log.i('leader reset')
+  directionkey.yabaiResizeLeaderPressed = false
+  directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed = false
+  directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed = false
+  directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed = false
+  directionkey.yabaiWindowFocusOnLeaderPressed = false
+end
+
+resetYabaiLeader()
+
+directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
+    -- directionkey.log.i(e:getKeyCode())
+    local currKey = e:getKeyCode()
+    if directionkey.capState == false then
+        if directionkey.yabaiResizeLeaderPressed == true then
+            -- directionkey.log.i('leader pressed resize window')
+            if currKey == directionkey.ENTER then
+                os.execute("/opt/homebrew/bin/yabai -m space --balance")
+                resetYabaiLeader()
+                return true
+            end
+            if currKey == directionkey.H then
+                os.execute("/opt/homebrew/bin/yabai -m window west --resize right:-50:0 2> /dev/null || /opt/homebrew/bin/yabai -m window --resize right:-50:0")
+                return true
+            end
+            if currKey == directionkey.J then
+                os.execute("/opt/homebrew/bin/yabai -m window north --resize bottom:0:50 2> /dev/null || /opt/homebrew/bin/yabai -m window --resize bottom:0:50")
+                return true
+            end
+            if currKey == directionkey.K then
+                os.execute("/opt/homebrew/bin/yabai -m window south --resize top:0:-50 2> /dev/null || /opt/homebrew/bin/yabai -m window --resize top:0:-50")
+                return true
+            end
+            if currKey == directionkey.L then
+                os.execute("/opt/homebrew/bin/yabai -m window east --resize left:50:0 2> /dev/null || /opt/homebrew/bin/yabai -m window --resize left:50:0")
+                return true
+            end
+            resetYabaiLeader()
+        end
+
+        if directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed == true then
+            -- directionkey.log.i('leader pressed move window in space')
+            if currKey == directionkey.H then
+                os.execute("/opt/homebrew/bin/yabai -m window --swap west")
+                return true
+            end
+            if currKey == directionkey.J then
+                os.execute("/opt/homebrew/bin/yabai -m window --swap south")
+                return true
+            end
+            if currKey == directionkey.K then
+                os.execute("/opt/homebrew/bin/yabai -m window --swap north")
+                return true
+            end
+            if currKey == directionkey.L then
+                os.execute("/opt/homebrew/bin/yabai -m window --swap east")
+                return true
+            end
+            resetYabaiLeader()
+        end
+
+        if directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed == true then
+            -- directionkey.log.i('leader pressed move window to display')
+            if currKey == directionkey._1 then
+                os.execute("/opt/homebrew/bin/yabai -m window --display 1")
+                resetYabaiLeader()
+                return true
+            end
+            if currKey == directionkey._2 then
+                os.execute("/opt/homebrew/bin/yabai -m window --display 2")
+                resetYabaiLeader()
+                return true
+            end
+            if currKey == directionkey._3 then
+                os.execute("/opt/homebrew/bin/yabai -m window --display 3")
+                resetYabaiLeader()
+                return true
+            end
+            if currKey == directionkey._4 then
+                os.execute("/opt/homebrew/bin/yabai -m window --display 4")
+                resetYabaiLeader()
+                return true
+            end
+            resetYabaiLeader()
+        end
+        if directionkey.yabaiWindowFocusOnLeaderPressed == true then
+            if currKey == directionkey.H then
+                os.execute("/opt/homebrew/bin/yabai -m window --focus west")
+                return true
+            end
+            if currKey == directionkey.J then
+                os.execute("/opt/homebrew/bin/yabai -m window --focus south")
+                return true
+            end
+            if currKey == directionkey.K then
+                os.execute("/opt/homebrew/bin/yabai -m window --focus north")
+                return true
+            end
+            if currKey == directionkey.L then
+                os.execute("/opt/homebrew/bin/yabai -m window --focus east")
+                return true
+            end
+            resetYabaiLeader()
+        end
+        if directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed == true then
+            if currKey == directionkey.N then
+                os.execute("/opt/homebrew/bin/yabai -m window --space next")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus next")
+                return true
+            end
+            if currKey == directionkey.P then
+                os.execute("/opt/homebrew/bin/yabai -m window --space prev")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus prev")
+                return true
+            end
+            if currKey == directionkey.C then
+                os.execute("/opt/homebrew/bin/yabai -m space --create")
+                local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
+                local info = hs.json.decode(rawInfo)
+                local indexOfNewSpace = info[#(info)]['index']
+                os.execute("/opt/homebrew/bin/yabai -m window --space ".. indexOfNewSpace)
+                os.execute("/opt/homebrew/bin/yabai -m space --focus ".. indexOfNewSpace)
+                return true
+            end
+            if currKey == directionkey._1 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 1")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 1")
+                return true
+            end
+            if currKey == directionkey._2 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 2")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 2")
+                return true
+            end
+            if currKey == directionkey._3 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 3")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 3")
+                return true
+            end
+            if currKey == directionkey._4 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 4")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 4")
+                return true
+            end
+            if currKey == directionkey._5 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 5")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 5")
+                return true
+            end
+            if currKey == directionkey._6 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 6")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 6")
+                return true
+            end
+            if currKey == directionkey._7 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 7")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 7")
+                return true
+            end
+            if currKey == directionkey._8 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 8")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 8")
+                return true
+            end
+            if currKey == directionkey._9 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 9")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 9")
+            end
+            if currKey == directionkey._0 then
+                os.execute("/opt/homebrew/bin/yabai -m window --space 10")
+                os.execute("/opt/homebrew/bin/yabai -m space --focus 10")
+            end
+          resetYabaiLeader()
+        end
+    end
+
+    if directionkey.capState == true then
+        if currKey == directionkey.W then
+            directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed = true
+            return true
+        end
+        if currKey == directionkey.D then
+            directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed = true
+        end
+        if currKey == directionkey.F then
+            directionkey.yabaiWindowFocusOnLeaderPressed = true
+        end
+        if currKey == directionkey.M then
+            directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed = true
+            return true
+        end
+        if currKey == directionkey.Z then
+            directionkey.yabaiResizeLeaderPressed = true
+            return true
+        end
+        if currKey == directionkey.X then
+            os.execute("/opt/homebrew/bin/yabai -m window --toggle sticky")
+            return true
+        end
+        if currKey == directionkey.Y then
+            os.execute("/opt/homebrew/bin/yabai -m window --focus west")
+            return true
+        end
+        if currKey == directionkey.U then
+            os.execute("/opt/homebrew/bin/yabai -m window --focus south")
+            return true
+        end
+        if currKey == directionkey.I then
+            os.execute("/opt/homebrew/bin/yabai -m window --focus north")
+            return true
+        end
+        if currKey == directionkey.O then
+            os.execute("/opt/homebrew/bin/yabai -m window --focus east")
+            return true
+        end
+        if currKey == directionkey.C then
+            os.execute("/opt/homebrew/bin/yabai -m space --create")
+            local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
+            local info = hs.json.decode(rawInfo)
+            os.execute("/opt/homebrew/bin/yabai -m space --focus "..info[#(info)]['index'])
+            return true
+        end
+        if currKey == directionkey.Q then
+            local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
+            local spaces = hs.json.decode(rawInfo)
+            if #(spaces) == 1 then
+              return true
+            end
+            if spaces[1]['has-focus'] then
+                os.execute("/opt/homebrew/bin/yabai -m space --focus "..spaces[2]['index'])
+                os.execute("/opt/homebrew/bin/yabai -m space --destroy "..spaces[1]['index'])
+                return true
+            end
+
+            local focused = -1
+            for index, space in pairs(spaces) do
+                if space['has-focus'] then
+                  focused = index
+                  break
+                end
+            end
+
+            if focused ~= -1 then
+                os.execute("/opt/homebrew/bin/yabai -m space --focus "..spaces[focused - 1]['index'])
+                os.execute("/opt/homebrew/bin/yabai -m space --destroy "..spaces[focused]['index'])
+              
+            end
+            return true
+        end
+        if currKey == directionkey.N then
+            -- local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
+            -- local info = hs.json.decode(rawInfo)
+            -- if info[#(info)]['has-focus'] == false then
+            --     os.execute("/opt/homebrew/bin/yabai -m space --focus next")
+            -- end
+            os.execute("/opt/homebrew/bin/yabai -m space --focus next")
+            return true
+        end
+        if currKey == directionkey.P then
+            -- local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
+            -- local info = hs.json.decode(rawInfo)
+
+            -- if info[1]['has-focus'] == false then
+            --     os.execute("/opt/homebrew/bin/yabai -m space --focus prev")
+            -- end
+            os.execute("/opt/homebrew/bin/yabai -m space --focus prev")
+            return true
+        end
+        -- 聚焦屏幕
+        if currKey == directionkey._1 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 1")
+            return true
+        end
+        if currKey == directionkey._2 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 2")
+            return true
+        end
+        if currKey == directionkey._3 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 3")
+            return true
+        end
+        if currKey == directionkey._4 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 4")
+            return true
+        end
+        if currKey == directionkey._5 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 5")
+            return true
+        end
+        if currKey == directionkey._6 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 6")
+            return true
+        end
+        if currKey == directionkey._7 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 7")
+            return true
+        end
+        if currKey == directionkey._8 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 8")
+            return true
+        end
+        if currKey == directionkey._9 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 9")
+            return true
+        end
+        if currKey == directionkey._0 then
+            os.execute("/opt/homebrew/bin/yabai -m space --focus 10")
+            return true
+        end
+    end
+
+end)
+directionkey.eventKeyDownYabai:start()
+
 
 return directionkey
