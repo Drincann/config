@@ -48,5 +48,4 @@ yabai -m signal --add event=display_changed action="yabai -m window --focus \$(y
 # highlight focused window
 # https://github.com/FelixKratz/JankyBorders
 yabai -m config window_shadow float
-borders active_color=0xee00ff44 inactive_color=0xffe1e3e4 width=5 &
 
