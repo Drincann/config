@@ -33,6 +33,7 @@ pastboard.watcher = hs.pasteboard.watcher.new(function(content)
     -- })
 
 end)
+pastboard.capslock = hs.keycodes.map["F13"]
 pastboard.ALT = hs.keycodes.map["alt"]
 pastboard.V = hs.keycodes.map["V"]
 pastboard.numkeys = {}
@@ -55,31 +56,39 @@ pastboard.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, func
     -- pastboard.log.i(altState)
     if altState and currKey == pastboard.V then
         if pastboard.historyViewIsOpen then
-            return true
+           pastboard.historyViewIsOpen = false
+           hs.alert.closeAll()
+           return true
         end
         pastboard.historyViewIsOpen = true
         local showStr = ""
         for i, v in ipairs(pastboard.minifyHistory) do
-            showStr = showStr .. i .. ". " .. v .. "\n"
+            showStr = showStr .. '[' .. i .. "]---------------------------------------------------\n-> " .. v .. "\n\n"
         end
         hs.alert.show(showStr, {
-            atScreenEdge = 1,
+            atScreenEdge = 0,
             textFont = "Fira Code",
             textSize = 20,
-            padding = 50
+            padding = 20,
+            radius = 5,
+            strokeColor = { white = 0 }
         }, 'infinite')
         return true
     end
-    if altState and pastboard.numkeys[currKey] then
+    if (altState or pastboard.historyViewIsOpen) and pastboard.numkeys[currKey] then
         local index = pastboard.numkeys[currKey]
+        pastboard.historyViewIsOpen = false
+        hs.alert.closeAll()
         if index <= #pastboard.history then
             pastboard.iscopy = true
             hs.pasteboard.setContents(pastboard.history[index])
-            hs.alert.show('copy ' .. index .. ". " .. pastboard.minifyHistory[index], {
-                atScreenEdge = 1,
+            hs.alert.show('copy ' .. '[' .. index .. "] " .. pastboard.minifyHistory[index], {
+                atScreenEdge = 0,
                 textFont = "Fira Code",
                 textSize = 20,
-                padding = 50
+                padding = 10,
+                radius = 5,
+                strokeColor = { white = 0 }
             })
             return true
         end
@@ -88,16 +97,17 @@ end)
 pastboard.eventKeyDown:start()
 
 pastboard.eventUp = hs.eventtap.new({hs.eventtap.event.types.keyUp}, function(e)
-    local currKey = e:getKeyCode()
-    local flagTable = e:getFlags()
-    local altState = flagTable['alt']
-    -- pastboard.log.i(currKey)
-    -- pastboard.log.i(altState)
-    if pastboard.historyViewIsOpen and (altState == nil or currKey == pastboard.V) then
-        pastboard.historyViewIsOpen = false
-        hs.alert.closeAll()
-        return true
-    end
+    -- local currKey = e:getKeyCode()
+    -- local flagTable = e:getFlags()
+    -- local altState = flagTable['alt']
+    -- pastboard.log.i(hs.keycodes.map[currKey])
+    -- -- pastboard.log.i(altState)
+    -- pastboard.log.i("keyup")
+    -- if pastboard.historyViewIsOpen and (altState == nil or currKey == pastboard.V) then
+    --     pastboard.historyViewIsOpen = false
+    --     hs.alert.closeAll()
+    --     return true
+    -- end
 
 end)
 pastboard.eventUp:start()
