@@ -37,33 +37,35 @@ directionkey._6 = hs.keycodes.map["6"]
 directionkey._7 = hs.keycodes.map["7"]
 directionkey._8 = hs.keycodes.map["8"]
 directionkey._9 = hs.keycodes.map["9"]
+directionkey.A = hs.keycodes.map["A"]
 directionkey.B = hs.keycodes.map["B"]
 directionkey.C = hs.keycodes.map["C"]
 -- remapping capslock to F13
 directionkey.capslock = hs.keycodes.map["F13"]
-directionkey.J = hs.keycodes.map["J"]
 directionkey.H = hs.keycodes.map["H"]
+directionkey.I = hs.keycodes.map["I"]
+directionkey.J = hs.keycodes.map["J"]
 directionkey.K = hs.keycodes.map["K"]
 directionkey.L = hs.keycodes.map["L"]
-directionkey.I = hs.keycodes.map["I"]
-directionkey.E = hs.keycodes.map["E"]
+directionkey.M = hs.keycodes.map["M"]
+directionkey.N = hs.keycodes.map["N"]
+directionkey.O = hs.keycodes.map["O"]
+directionkey.P = hs.keycodes.map["P"]
+directionkey.Q = hs.keycodes.map["Q"]
 directionkey.R = hs.keycodes.map["R"]
+directionkey.S = hs.keycodes.map["S"]
+directionkey.E = hs.keycodes.map["E"]
 directionkey.D = hs.keycodes.map["D"]
 directionkey.F = hs.keycodes.map["F"]
-directionkey.M = hs.keycodes.map["M"]
 directionkey.W = hs.keycodes.map["W"]
-directionkey.N = hs.keycodes.map["N"]
-directionkey.P = hs.keycodes.map["P"]
-directionkey.N = hs.keycodes.map["N"]
-directionkey.Q = hs.keycodes.map["Q"]
 directionkey.Y = hs.keycodes.map["Y"]
 directionkey.U = hs.keycodes.map["U"]
 directionkey.I = hs.keycodes.map["I"]
-directionkey.O = hs.keycodes.map["O"]
 directionkey.Z = hs.keycodes.map["Z"]
 directionkey.X = hs.keycodes.map["X"]
 directionkey.COMMA = hs.keycodes.map[","]
 directionkey.DOT = hs.keycodes.map["."]
+directionkey.LEFT_BRACKET = hs.keycodes.map["["]
 directionkey.ALT = hs.keycodes.map["alt"]
 directionkey.ENTER = hs.keycodes.map["return"]
 directionkey.CMD = hs.keycodes.map["cmd"]
@@ -208,6 +210,13 @@ end
 
 resetYabaiLeader()
 
+local function resetYabaiLock()
+  directionkey.log.i('leader reset')
+  directionkey.yabaiSpaceSwitchLock = false
+end
+
+resetYabaiLock()
+
 directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
     -- directionkey.log.i(e:getKeyCode())
     local currKey = e:getKeyCode()
@@ -303,12 +312,12 @@ directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDow
             resetYabaiLeader()
         end
         if directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed == true then
-            if currKey == directionkey.N then
+            if currKey == directionkey.S or currKey == directionkey.N then
                 os.execute("/opt/homebrew/bin/yabai -m window --space next")
                 os.execute("/opt/homebrew/bin/yabai -m space --focus next")
                 return true
             end
-            if currKey == directionkey.P then
+            if currKey == directionkey.A or currKey == directionkey.P then
                 os.execute("/opt/homebrew/bin/yabai -m window --space prev")
                 os.execute("/opt/homebrew/bin/yabai -m space --focus prev")
                 return true
@@ -447,23 +456,41 @@ directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDow
             end
             return true
         end
-        if currKey == directionkey.N then
+        if currKey == directionkey.S or currKey == directionkey.N then
+            
             -- local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
             -- local info = hs.json.decode(rawInfo)
             -- if info[#(info)]['has-focus'] == false then
             --     os.execute("/opt/homebrew/bin/yabai -m space --focus next")
             -- end
+            
+            if directionkey.yabaiSpaceSwitchLock == true then
+              return true;
+            end
+
+            directionkey.yabaiSpaceSwitchLock = true
             os.execute("/opt/homebrew/bin/yabai -m space --focus next")
+            directionkey.yabaiSpaceSwitchLock = false
             return true
         end
-        if currKey == directionkey.P then
+        if currKey == directionkey.A or currKey == directionkey.P then
             -- local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
             -- local info = hs.json.decode(rawInfo)
 
             -- if info[1]['has-focus'] == false then
             --     os.execute("/opt/homebrew/bin/yabai -m space --focus prev")
             -- end
+            if directionkey.yabaiSpaceSwitchLock == true then
+              return true;
+            end
+
+            directionkey.yabaiSpaceSwitchLock = true
             os.execute("/opt/homebrew/bin/yabai -m space --focus prev")
+            directionkey.yabaiSpaceSwitchLock = false
+            return true
+        end
+        if currKey == directionkey.LEFT_BRACKET then
+            os.execute("/opt/homebrew/bin/yabai -m window --focus recent")
             return true
         end
         -- 聚焦屏幕
