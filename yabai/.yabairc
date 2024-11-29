@@ -28,6 +28,11 @@ yabai -m config window_gap     10
 yabai -m config window_opacity on
 yabai -m config active_window_opacity 1.0
 yabai -m config normal_window_opacity 0.9
+#  animation
+yabai -m config \
+    window_animation_duration 0.2 \
+    window_animation_easing ease_out_expo \
+    window_opacity_duration 0.1 
 
 
 # set mouse interaction modifier key (default: fn)
