@@ -49,3 +49,5 @@ yabai -m signal --add event=display_changed action="yabai -m window --focus \$(y
 # https://github.com/FelixKratz/JankyBorders
 yabai -m config window_shadow float
 
+# set focus follows mouse mode (default: off, options: off, autoraise, autofocus)
+yabai -m config focus_follows_mouse autoraise
