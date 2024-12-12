@@ -75,7 +75,7 @@ pastboard.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, func
         }, 'infinite')
         return true
     end
-    if (altState or pastboard.historyViewIsOpen) and pastboard.numkeys[currKey] then
+    if (pastboard.historyViewIsOpen) and pastboard.numkeys[currKey] then
         local index = pastboard.numkeys[currKey]
         pastboard.historyViewIsOpen = false
         hs.alert.closeAll()
@@ -96,20 +96,20 @@ pastboard.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, func
 end)
 pastboard.eventKeyDown:start()
 
-pastboard.eventUp = hs.eventtap.new({hs.eventtap.event.types.keyUp}, function(e)
-    -- local currKey = e:getKeyCode()
-    -- local flagTable = e:getFlags()
-    -- local altState = flagTable['alt']
-    -- pastboard.log.i(hs.keycodes.map[currKey])
-    -- -- pastboard.log.i(altState)
-    -- pastboard.log.i("keyup")
-    -- if pastboard.historyViewIsOpen and (altState == nil or currKey == pastboard.V) then
-    --     pastboard.historyViewIsOpen = false
-    --     hs.alert.closeAll()
-    --     return true
-    -- end
-
-end)
-pastboard.eventUp:start()
+-- pastboard.eventUp = hs.eventtap.new({hs.eventtap.event.types.keyUp}, function(e)
+--     -- local currKey = e:getKeyCode()
+--     -- local flagTable = e:getFlags()
+--     -- local altState = flagTable['alt']
+--     -- pastboard.log.i(hs.keycodes.map[currKey])
+--     -- -- pastboard.log.i(altState)
+--     -- pastboard.log.i("keyup")
+--     -- if pastboard.historyViewIsOpen and (altState == nil or currKey == pastboard.V) then
+--     --     pastboard.historyViewIsOpen = false
+--     --     hs.alert.closeAll()
+--     --     return true
+--     -- end
+-- 
+-- end)
+-- pastboard.eventUp:start()
 
 return pastboard
