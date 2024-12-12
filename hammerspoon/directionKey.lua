@@ -314,12 +314,12 @@ directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDow
         if directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed == true then
             if currKey == directionkey.S or currKey == directionkey.N then
                 os.execute("/opt/homebrew/bin/yabai -m window --space next")
-                os.execute("/opt/homebrew/bin/yabai -m space --focus next")
+                -- os.execute("/opt/homebrew/bin/yabai -m space --focus next")
                 return true
             end
             if currKey == directionkey.A or currKey == directionkey.P then
                 os.execute("/opt/homebrew/bin/yabai -m window --space prev")
-                os.execute("/opt/homebrew/bin/yabai -m space --focus prev")
+                -- os.execute("/opt/homebrew/bin/yabai -m space --focus prev")
                 return true
             end
             if currKey == directionkey.C then
@@ -328,7 +328,7 @@ directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDow
                 local info = hs.json.decode(rawInfo)
                 local indexOfNewSpace = info[#(info)]['index']
                 os.execute("/opt/homebrew/bin/yabai -m window --space ".. indexOfNewSpace)
-                os.execute("/opt/homebrew/bin/yabai -m space --focus ".. indexOfNewSpace)
+                -- os.execute("/opt/homebrew/bin/yabai -m space --focus ".. indexOfNewSpace)
                 return true
             end
             if currKey == directionkey._1 then
