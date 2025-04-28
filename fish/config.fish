@@ -1,5 +1,32 @@
+# vcpkg  export VCPKG_ROOT="$HOME/vcpkg"
+set -x VCPKG_ROOT "$HOME/vcpkg"
+
+# fish editor
+set -x EDITOR /opt/homebrew/bin/nvim
+
+# json format
+alias json "rm ~/test/test.json && nvim ~/test/test.json"
+
 # optional pyenv
 alias py "pyenv init - | source"
+
+# cli
+# studio_conn [-p port]
+# - port is optional, for socks5 proxy
+function studio_conn
+    if test -z "$argv"
+        echo "ssh -J gaolihai@1.117.228.194 drincanngao@localhost -p 8081"
+        ssh -J gaolihai@1.117.228.194 drincanngao@localhost -p 8081
+    else
+        if test $argv[1] = -p
+            echo "ssh -D $argv[2] -J gaolihai@1.117.228.194 drincanngao@localhost -p 8081"
+            ssh -D $argv[2] -J gaolihai@1.117.228.194 drincanngao@localhost -p 8081
+        end
+    end
+end
+
+
+
 
 # j command
 [ -f /opt/homebrew/share/autojump/autojump.fish ]; and source /opt/homebrew/share/autojump/autojump.fish
@@ -17,7 +44,17 @@ if status --is-interactive
 end
 
 # thefuck
-thefuck --alias | source
+# thefuck --alias | source
+# thefuck is too slow to start
+function fuck -d "Correct your previous console command"
+  set -l fucked_up_command $history[1]
+  env TF_SHELL=fish TF_ALIAS=fuck PYTHONIOENCODING=utf-8 thefuck $fucked_up_command THEFUCK_ARGUMENT_PLACEHOLDER $argv | read -l unfucked_command
+  if [ "$unfucked_command" != "" ]
+    eval $unfucked_command
+    builtin history delete --exact --case-sensitive -- $fucked_up_command
+    builtin history merge
+  end
+end
 
 # autojump
 # [ -f /opt/homebrew/share/autojump/autojump.fish ]; and source /opt/homebrew/share/autojump/autojump.fish # save my life
@@ -50,6 +87,7 @@ alias c clear
 alias pof "networksetup -setwebproxystate Wi-Fi off ; networksetup -setsecurewebproxystate Wi-Fi off"
 
 # git alias
+alias clone "git clone"
 alias g git
 
 # git status
@@ -75,6 +113,7 @@ alias gap "git add -p"
 # gc                  —— git commit 
 # gc commit message   —— git commit -m "commit message"
 # gc --amned          —— git commit --amend
+# gc a                —— git commit --amend
 function gc
     if test -z "$argv"
         echo "git commit"
@@ -84,6 +123,9 @@ function gc
         if test "$(echo $argv | cut -c 1)" = -
             echo "git commit $argv"
             git commit $argv
+        else if test $argv = a
+            echo "git commit --amend"
+            git commit --amend
         else
             echo "git commit -m \"$argv\""
             git commit -m "$argv"
@@ -94,6 +136,8 @@ end
 # git push/pull
 alias gpl "git pull --rebase"
 alias gps "git push"
+alias gp "git push"
+alias gpf "git push --force"
 
 # git rebase
 # usage:
@@ -122,6 +166,7 @@ alias gbd "git branch -d"
 # git lg
 alias lg "git lg"
 alias gl "git lg"
+
 
 # git search
 alias gsc "git lg -S" # search by file content
@@ -208,3 +253,18 @@ alias gsw "git switch"
 alias gss "git stash"
 # short for git stash pop
 alias gssp "git stash pop"
+
+# bun
+set --export BUN_INSTALL "$HOME/.bun"
+set --export PATH $BUN_INSTALL/bin $PATH
+
+# pnpm
+set -gx PNPM_HOME "/Users/drincanngao/Library/pnpm"
+if not string match -q -- $PNPM_HOME $PATH
+  set -gx PATH "$PNPM_HOME" $PATH
+end
+# pnpm end
+
+# fzf alias
+alias zkill "kill -9 \$(ps aux | fzf | awk '{print \$2}')"
+
