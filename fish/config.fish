@@ -1,3 +1,5 @@
+test ! -e "$HOME/.x-cmd.root/local/data/fish/rc.fish" || source "$HOME/.x-cmd.root/local/data/fish/rc.fish" # boot up x-cmd.
+
 # vcpkg  export VCPKG_ROOT="$HOME/vcpkg"
 set -x VCPKG_ROOT "$HOME/vcpkg"
 
@@ -9,6 +11,9 @@ alias json "rm ~/test/test.json && nvim ~/test/test.json"
 
 # optional pyenv
 alias py "pyenv init - | source"
+
+# esp
+alias getidf ". $HOME/esp/esp-idf/export.fish"
 
 # cli
 # studio_conn [-p port]
@@ -90,6 +95,14 @@ alias pof "networksetup -setwebproxystate Wi-Fi off ; networksetup -setsecureweb
 alias clone "git clone"
 alias g git
 
+# git symbolic-ref HEAD refs/heads/a
+# usage:
+# gjustgo [branch name] —— git symbolic-ref HEAD refs/heads/[branch name]
+function gjustgo
+    echo "git symbolic-ref HEAD refs/heads/$argv"
+    git symbolic-ref HEAD refs/heads/$argv
+end
+
 # git status
 # usage:
 # gs [options] —— git status -[options]
@@ -113,7 +126,7 @@ alias gap "git add -p"
 # gc                  —— git commit 
 # gc commit message   —— git commit -m "commit message"
 # gc --amned          —— git commit --amend
-# gc a                —— git commit --amend
+# gc a                —— git commit --amend --no-edit
 function gc
     if test -z "$argv"
         echo "git commit"
@@ -124,7 +137,7 @@ function gc
             echo "git commit $argv"
             git commit $argv
         else if test $argv = a
-            echo "git commit --amend"
+            echo "git commit --amend --no-edit"
             git commit --amend
         else
             echo "git commit -m \"$argv\""
@@ -207,6 +220,60 @@ function grs
     git reset --$softOrHard $ref
 end
 
+# git diff
+# usage:
+# gdiff <older_commit> <newer_commit>
+function gdiff
+    if test (count $argv) -ne 2
+        echo "Usage: gdiff <older_commit> <newer_commit>"
+        return 1
+    end
+
+    set older $argv[1]
+    set newer $argv[2]
+
+    # 获取当前分支名或 commit
+    set current_branch (git symbolic-ref --quiet --short HEAD 2>/dev/null)
+    set current_commit (git rev-parse HEAD)
+
+    echo "Saving working tree..."
+    set pre_stash (git stash list | head -n1)
+    git stash push -u -m "gdiff-temp"
+    set post_stash (git stash list | head -n1)
+
+    set did_stash 0
+    if test "$pre_stash" != "$post_stash"
+        set did_stash 1
+    else
+        echo "Nothing to stash."
+    end
+
+    echo "Detaching HEAD to avoid altering branch pointer..."
+    git checkout --detach $current_commit
+
+    echo "Resetting hard to $newer (load file content)..."
+    git reset --hard $newer
+
+    echo "Resetting soft to $older (construct diff)..."
+    git reset --soft $older
+
+    lazygit
+
+    echo "Restoring original branch or state..."
+    if test -n "$current_branch"
+        echo "Returning to branch $current_branch..."
+        git checkout $current_branch
+    else
+        echo "Returning to detached commit $current_commit..."
+        git checkout --detach $current_commit
+    end
+
+    if test $did_stash -eq 1
+        echo "Restoring stashed changes..."
+        git stash pop
+    end
+end
+
 # soft or hard reset to any ref
 # usage:
 # gsinc [f] [upstream] [branch] —— git reset --[:soft|:f:hard] [upstream:upstream|:default upstream]/[branch:branch|:current branch]
@@ -268,3 +335,5 @@ end
 # fzf alias
 alias zkill "kill -9 \$(ps aux | fzf | awk '{print \$2}')"
 
+# Added by Windsurf
+fish_add_path /Users/drincanngao/.codeium/windsurf/bin
