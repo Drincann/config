@@ -138,7 +138,7 @@ function gc
             git commit $argv
         else if test $argv = a
             echo "git commit --amend --no-edit"
-            git commit --amend
+            git commit --amend --no-edit
         else
             echo "git commit -m \"$argv\""
             git commit -m "$argv"
