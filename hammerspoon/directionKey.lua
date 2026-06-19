@@ -110,6 +110,7 @@ directionkey.DOT = hs.keycodes.map["."]
 directionkey.LEFT_BRACKET = hs.keycodes.map["["]
 directionkey.ALT = hs.keycodes.map["alt"]
 directionkey.ENTER = hs.keycodes.map["return"]
+directionkey.SPACE = hs.keycodes.map["space"]
 directionkey.CMD = hs.keycodes.map["cmd"]
 directionkey.SHIFT = hs.keycodes.map["shift"]
 directionkey.ESC = hs.keycodes.map["escape"]
@@ -117,6 +118,234 @@ directionkey.showTerminal = hs.keycodes.map["t"]
 directionkey.shiftState = false;
 directionkey.capState = false;
 directionkey.log = hs.logger.new("script", "debug")
+
+local YABAI_PATH = "/opt/homebrew/bin/yabai"
+local YABAI_SPACE_SWITCH_COOLDOWN_SECONDS = 0.08
+local yabaiRunningTasks = {}
+
+local yabaiClient = {}
+
+local function rememberYabaiTask(task)
+    if task then
+        yabaiRunningTasks[task] = true
+    end
+end
+
+local function forgetYabaiTask(task)
+    if task then
+        yabaiRunningTasks[task] = nil
+    end
+end
+
+function yabaiClient.run(args, onExit)
+    local task
+    task = hs.task.new(YABAI_PATH, function(exitCode, stdout, stderr)
+        forgetYabaiTask(task)
+        if exitCode ~= 0 and stderr and stderr ~= "" then
+            directionkey.log.w("yabai failed: " .. stderr)
+        end
+        if onExit then
+            onExit(exitCode, stdout, stderr)
+        end
+    end, args)
+
+    if not task then
+        directionkey.log.e("failed to create yabai task")
+        return
+    end
+
+    rememberYabaiTask(task)
+    if not task:start() then
+        forgetYabaiTask(task)
+        directionkey.log.e("failed to start yabai task")
+    end
+end
+
+function yabaiClient.runShell(command, onExit)
+    local task
+    task = hs.task.new("/bin/zsh", function(exitCode, stdout, stderr)
+        forgetYabaiTask(task)
+        if exitCode ~= 0 and stderr and stderr ~= "" then
+            directionkey.log.w("yabai shell command failed: " .. stderr)
+        end
+        if onExit then
+            onExit(exitCode, stdout, stderr)
+        end
+    end, {"-lc", command})
+
+    if not task then
+        directionkey.log.e("failed to create shell task")
+        return
+    end
+
+    rememberYabaiTask(task)
+    if not task:start() then
+        forgetYabaiTask(task)
+        directionkey.log.e("failed to start shell task")
+    end
+end
+
+function yabaiClient.focusSpace(space, onExit)
+    yabaiClient.run({"-m", "space", "--focus", tostring(space)}, onExit)
+end
+
+function yabaiClient.focusNextSpace(onExit)
+    yabaiClient.focusSpace("next", onExit)
+end
+
+function yabaiClient.focusPreviousSpace(onExit)
+    yabaiClient.focusSpace("prev", onExit)
+end
+
+function yabaiClient.moveWindowToSpace(space, onExit)
+    yabaiClient.run({"-m", "window", "--space", tostring(space)}, onExit)
+end
+
+function yabaiClient.moveWindowToNextSpace()
+    yabaiClient.moveWindowToSpace("next")
+end
+
+function yabaiClient.moveWindowToPreviousSpace()
+    yabaiClient.moveWindowToSpace("prev")
+end
+
+function yabaiClient.moveWindowToDisplay(display)
+    yabaiClient.run({"-m", "window", "--display", tostring(display)})
+end
+
+function yabaiClient.focusWindow(direction)
+    yabaiClient.run({"-m", "window", "--focus", direction})
+end
+
+function yabaiClient.focusRecentWindow()
+    yabaiClient.focusWindow("recent")
+end
+
+function yabaiClient.swapWindow(direction)
+    yabaiClient.run({"-m", "window", "--swap", direction})
+end
+
+function yabaiClient.balanceSpace()
+    yabaiClient.run({"-m", "space", "--balance"})
+end
+
+function yabaiClient.toggleSticky()
+    yabaiClient.run({"-m", "window", "--toggle", "sticky"})
+end
+
+function yabaiClient.resizeWindowFromWest()
+    yabaiClient.runShell(YABAI_PATH .. " -m window west --resize right:-50:0 2> /dev/null || " .. YABAI_PATH .. " -m window --resize right:-50:0")
+end
+
+function yabaiClient.resizeWindowFromNorth()
+    yabaiClient.runShell(YABAI_PATH .. " -m window north --resize bottom:0:50 2> /dev/null || " .. YABAI_PATH .. " -m window --resize bottom:0:50")
+end
+
+function yabaiClient.resizeWindowFromSouth()
+    yabaiClient.runShell(YABAI_PATH .. " -m window south --resize top:0:-50 2> /dev/null || " .. YABAI_PATH .. " -m window --resize top:0:-50")
+end
+
+function yabaiClient.resizeWindowFromEast()
+    yabaiClient.runShell(YABAI_PATH .. " -m window east --resize left:50:0 2> /dev/null || " .. YABAI_PATH .. " -m window --resize left:50:0")
+end
+
+function yabaiClient.queryDisplaySpaces(callback)
+    yabaiClient.run({"-m", "query", "--spaces", "--display"}, function(exitCode, stdout, stderr)
+        if exitCode ~= 0 then
+            return
+        end
+
+        local ok, spaces = pcall(hs.json.decode, stdout)
+        if not ok or type(spaces) ~= "table" then
+            directionkey.log.w("failed to decode yabai spaces")
+            return
+        end
+
+        callback(spaces)
+    end)
+end
+
+function yabaiClient.createSpaceAndFocus()
+    yabaiClient.run({"-m", "space", "--create"}, function(exitCode)
+        if exitCode ~= 0 then
+            return
+        end
+
+        yabaiClient.queryDisplaySpaces(function(spaces)
+            local newestSpace = spaces[#spaces]
+            if newestSpace and newestSpace["index"] then
+                yabaiClient.focusSpace(newestSpace["index"])
+            end
+        end)
+    end)
+end
+
+function yabaiClient.createSpaceAndMoveFocusedWindow()
+    yabaiClient.run({"-m", "space", "--create"}, function(exitCode)
+        if exitCode ~= 0 then
+            return
+        end
+
+        yabaiClient.queryDisplaySpaces(function(spaces)
+            local newestSpace = spaces[#spaces]
+            if newestSpace and newestSpace["index"] then
+                yabaiClient.moveWindowToSpace(newestSpace["index"])
+            end
+        end)
+    end)
+end
+
+function yabaiClient.destroyFocusedSpace()
+    yabaiClient.queryDisplaySpaces(function(spaces)
+        if #spaces <= 1 then
+            return
+        end
+
+        if spaces[1]["has-focus"] then
+            yabaiClient.focusSpace(spaces[2]["index"], function()
+                yabaiClient.run({"-m", "space", "--destroy", tostring(spaces[1]["index"])})
+            end)
+            return
+        end
+
+        local focused = nil
+        for index, space in ipairs(spaces) do
+            if space["has-focus"] then
+                focused = index
+                break
+            end
+        end
+
+        if focused and focused > 1 then
+            yabaiClient.focusSpace(spaces[focused - 1]["index"], function()
+                yabaiClient.run({"-m", "space", "--destroy", tostring(spaces[focused]["index"])})
+            end)
+        end
+    end)
+end
+
+local function finishYabaiSpaceSwitch()
+    directionkey.yabaiSpaceSwitchLock = false
+    if directionkey.yabaiSpaceSwitchUnlockTimer then
+        directionkey.yabaiSpaceSwitchUnlockTimer:stop()
+        directionkey.yabaiSpaceSwitchUnlockTimer = nil
+    end
+end
+
+local function switchYabaiSpace(direction)
+    if directionkey.yabaiSpaceSwitchLock == true then
+        return
+    end
+
+    directionkey.yabaiSpaceSwitchLock = true
+    directionkey.yabaiSpaceSwitchUnlockTimer = hs.timer.doAfter(YABAI_SPACE_SWITCH_COOLDOWN_SECONDS, finishYabaiSpaceSwitch)
+
+    if direction == "next" then
+        yabaiClient.focusNextSpace(finishYabaiSpaceSwitch)
+    else
+        yabaiClient.focusPreviousSpace(finishYabaiSpaceSwitch)
+    end
+end
 
 directionkey.eventMouseDownAndFlagChange = hs.eventtap.new({hs.eventtap.event.types.otherMouseDown,hs.eventtap.event.types.flagsChanged}, function(e)
     -- log.i(e:getProperty(hs.eventtap.evento.oroperties['mouseEventButtonNumber']))
@@ -267,24 +496,24 @@ directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDow
             -- directionkey.log.i('leader pressed resize window')
             if currKey == directionkey.ENTER then
                 hs.alert.show("⚖️ Balancing Space")
-                hs.execute("/opt/homebrew/bin/yabai -m space --balance", true)
+                yabaiClient.balanceSpace()
                 resetYabaiLeader()
                 return true
             end
             if currKey == directionkey.H then
-                hs.execute("/opt/homebrew/bin/yabai -m window west --resize right:-50:0 2> /dev/null || /opt/homebrew/bin/yabai -m window --resize right:-50:0", true)
+                yabaiClient.resizeWindowFromWest()
                 return true
             end
             if currKey == directionkey.J then
-                hs.execute("/opt/homebrew/bin/yabai -m window north --resize bottom:0:50 2> /dev/null || /opt/homebrew/bin/yabai -m window --resize bottom:0:50", true)
+                yabaiClient.resizeWindowFromNorth()
                 return true
             end
             if currKey == directionkey.K then
-                hs.execute("/opt/homebrew/bin/yabai -m window south --resize top:0:-50 2> /dev/null || /opt/homebrew/bin/yabai -m window --resize top:0:-50", true)
+                yabaiClient.resizeWindowFromSouth()
                 return true
             end
             if currKey == directionkey.L then
-                hs.execute("/opt/homebrew/bin/yabai -m window east --resize left:50:0 2> /dev/null || /opt/homebrew/bin/yabai -m window --resize left:50:0", true)
+                yabaiClient.resizeWindowFromEast()
                 return true
             end
             resetYabaiLeader()
@@ -293,19 +522,19 @@ directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDow
         if directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed == true then
             -- directionkey.log.i('leader pressed move window in space')
             if currKey == directionkey.H then
-                hs.execute("/opt/homebrew/bin/yabai -m window --swap west", true)
+                yabaiClient.swapWindow("west")
                 return true
             end
             if currKey == directionkey.J then
-                hs.execute("/opt/homebrew/bin/yabai -m window --swap south", true)
+                yabaiClient.swapWindow("south")
                 return true
             end
             if currKey == directionkey.K then
-                hs.execute("/opt/homebrew/bin/yabai -m window --swap north", true)
+                yabaiClient.swapWindow("north")
                 return true
             end
             if currKey == directionkey.L then
-                hs.execute("/opt/homebrew/bin/yabai -m window --swap east", true)
+                yabaiClient.swapWindow("east")
                 return true
             end
             resetYabaiLeader()
@@ -314,22 +543,22 @@ directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDow
         if directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed == true then
             -- directionkey.log.i('leader pressed move window to display')
             if currKey == directionkey._1 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --display 1", true)
+                yabaiClient.moveWindowToDisplay(1)
                 resetYabaiLeader()
                 return true
             end
             if currKey == directionkey._2 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --display 2", true)
+                yabaiClient.moveWindowToDisplay(2)
                 resetYabaiLeader()
                 return true
             end
             if currKey == directionkey._3 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --display 3", true)
+                yabaiClient.moveWindowToDisplay(3)
                 resetYabaiLeader()
                 return true
             end
             if currKey == directionkey._4 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --display 4", true)
+                yabaiClient.moveWindowToDisplay(4)
                 resetYabaiLeader()
                 return true
             end
@@ -337,96 +566,97 @@ directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDow
         end
         if directionkey.yabaiWindowFocusOnLeaderPressed == true then
             if currKey == directionkey.H then
-                hs.execute("/opt/homebrew/bin/yabai -m window --focus west", true)
+                yabaiClient.focusWindow("west")
                 return true
             end
             if currKey == directionkey.J then
-                hs.execute("/opt/homebrew/bin/yabai -m window --focus south", true)
+                yabaiClient.focusWindow("south")
                 return true
             end
             if currKey == directionkey.K then
-                hs.execute("/opt/homebrew/bin/yabai -m window --focus north", true)
+                yabaiClient.focusWindow("north")
                 return true
             end
             if currKey == directionkey.L then
-                hs.execute("/opt/homebrew/bin/yabai -m window --focus east", true)
+                yabaiClient.focusWindow("east")
                 return true
             end
             resetYabaiLeader()
         end
         if directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed == true then
             if currKey == directionkey.S or currKey == directionkey.N then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space next", true)
-                -- hs.execute("/opt/homebrew/bin/yabai -m space --focus next", true)
+                yabaiClient.moveWindowToNextSpace()
                 return true
             end
             if currKey == directionkey.A or currKey == directionkey.P then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space prev", true)
-                -- hs.execute("/opt/homebrew/bin/yabai -m space --focus prev", true)
+                yabaiClient.moveWindowToPreviousSpace()
                 return true
             end
             if currKey == directionkey.C then
-                hs.execute("/opt/homebrew/bin/yabai -m space --create", true)
-                local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
-                local info = hs.json.decode(rawInfo)
-                local indexOfNewSpace = info[#(info)]['index']
-                hs.execute("/opt/homebrew/bin/yabai -m window --space ".. indexOfNewSpace, true)
-                -- hs.execute("/opt/homebrew/bin/yabai -m space --focus ".. indexOfNewSpace, true)
+                yabaiClient.createSpaceAndMoveFocusedWindow()
                 return true
             end
             if currKey == directionkey._1 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 1", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 1", true)
+                yabaiClient.moveWindowToSpace(1)
+                yabaiClient.focusSpace(1)
                 return true
             end
             if currKey == directionkey._2 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 2", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 2", true)
+                yabaiClient.moveWindowToSpace(2)
+                yabaiClient.focusSpace(2)
                 return true
             end
             if currKey == directionkey._3 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 3", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 3", true)
+                yabaiClient.moveWindowToSpace(3)
+                yabaiClient.focusSpace(3)
                 return true
             end
             if currKey == directionkey._4 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 4", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 4", true)
+                yabaiClient.moveWindowToSpace(4)
+                yabaiClient.focusSpace(4)
                 return true
             end
             if currKey == directionkey._5 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 5", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 5", true)
+                yabaiClient.moveWindowToSpace(5)
+                yabaiClient.focusSpace(5)
                 return true
             end
             if currKey == directionkey._6 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 6", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 6", true)
+                yabaiClient.moveWindowToSpace(6)
+                yabaiClient.focusSpace(6)
                 return true
             end
             if currKey == directionkey._7 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 7", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 7", true)
+                yabaiClient.moveWindowToSpace(7)
+                yabaiClient.focusSpace(7)
                 return true
             end
             if currKey == directionkey._8 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 8", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 8", true)
+                yabaiClient.moveWindowToSpace(8)
+                yabaiClient.focusSpace(8)
                 return true
             end
             if currKey == directionkey._9 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 9", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 9", true)
+                yabaiClient.moveWindowToSpace(9)
+                yabaiClient.focusSpace(9)
+                return true
             end
             if currKey == directionkey._0 then
-                hs.execute("/opt/homebrew/bin/yabai -m window --space 10", true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus 10", true)
+                yabaiClient.moveWindowToSpace(10)
+                yabaiClient.focusSpace(10)
+                return true
             end
           resetYabaiLeader()
         end
     end
 
     if directionkey.capState == true then
+        if currKey == directionkey.SPACE then
+            if _G.windowHintsPlugin then
+                _G.windowHintsPlugin.toggle()
+            end
+            return true
+        end
         if currKey == directionkey.W then
             directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed = true
             return true
@@ -447,137 +677,86 @@ directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDow
         end
         if currKey == directionkey.X then
             hs.alert.show("📌 Toggle Sticky")
-            hs.execute("/opt/homebrew/bin/yabai -m window --toggle sticky", true)
+            yabaiClient.toggleSticky()
             return true
         end
         if currKey == directionkey.Y then
-            hs.execute("/opt/homebrew/bin/yabai -m window --focus west", true)
+            yabaiClient.focusWindow("west")
             return true
         end
         if currKey == directionkey.U then
-            hs.execute("/opt/homebrew/bin/yabai -m window --focus south", true)
+            yabaiClient.focusWindow("south")
             return true
         end
         if currKey == directionkey.I then
-            hs.execute("/opt/homebrew/bin/yabai -m window --focus north", true)
+            yabaiClient.focusWindow("north")
             return true
         end
         if currKey == directionkey.O then
-            hs.execute("/opt/homebrew/bin/yabai -m window --focus east", true)
+            yabaiClient.focusWindow("east")
             return true
         end
         if currKey == directionkey.C then
             hs.alert.show("🚀 Creating new Space...")
-            hs.execute("/opt/homebrew/bin/yabai -m space --create", true)
-            local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
-            local info = hs.json.decode(rawInfo)
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus "..info[#(info)]['index'], true)
+            yabaiClient.createSpaceAndFocus()
             return true
         end
         if currKey == directionkey.Q then
             hs.alert.show("🗑 Destroying current Space...")
-            local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
-            local spaces = hs.json.decode(rawInfo)
-            if #(spaces) == 1 then
-              return true
-            end
-            if spaces[1]['has-focus'] then
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus "..spaces[2]['index'], true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --destroy "..spaces[1]['index'], true)
-                return true
-            end
-
-            local focused = -1
-            for index, space in pairs(spaces) do
-                if space['has-focus'] then
-                  focused = index
-                  break
-                end
-            end
-
-            if focused ~= -1 then
-                hs.execute("/opt/homebrew/bin/yabai -m space --focus "..spaces[focused - 1]['index'], true)
-                hs.execute("/opt/homebrew/bin/yabai -m space --destroy "..spaces[focused]['index'], true)
-              
-            end
+            yabaiClient.destroyFocusedSpace()
             return true
         end
         if currKey == directionkey.S or currKey == directionkey.N then
-            
-            -- local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
-            -- local info = hs.json.decode(rawInfo)
-            -- if info[#(info)]['has-focus'] == false then
-            --     hs.execute("/opt/homebrew/bin/yabai -m space --focus next", true)
-            -- end
-            
-            if directionkey.yabaiSpaceSwitchLock == true then
-              return true;
-            end
-
-            directionkey.yabaiSpaceSwitchLock = true
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus next", true)
-            directionkey.yabaiSpaceSwitchLock = false
+            switchYabaiSpace("next")
             return true
         end
         if currKey == directionkey.A or currKey == directionkey.P then
-            -- local rawInfo = hs.execute("/opt/homebrew/bin/yabai -m query --spaces --display")
-            -- local info = hs.json.decode(rawInfo)
-
-            -- if info[1]['has-focus'] == false then
-            --     hs.execute("/opt/homebrew/bin/yabai -m space --focus prev", true)
-            -- end
-            if directionkey.yabaiSpaceSwitchLock == true then
-              return true;
-            end
-
-            directionkey.yabaiSpaceSwitchLock = true
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus prev", true)
-            directionkey.yabaiSpaceSwitchLock = false
+            switchYabaiSpace("prev")
             return true
         end
         if currKey == directionkey.LEFT_BRACKET then
-            hs.execute("/opt/homebrew/bin/yabai -m window --focus recent", true)
+            yabaiClient.focusRecentWindow()
             return true
         end
         -- 聚焦屏幕
         if currKey == directionkey._1 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 1", true)
+            yabaiClient.focusSpace(1)
             return true
         end
         if currKey == directionkey._2 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 2", true)
+            yabaiClient.focusSpace(2)
             return true
         end
         if currKey == directionkey._3 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 3", true)
+            yabaiClient.focusSpace(3)
             return true
         end
         if currKey == directionkey._4 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 4", true)
+            yabaiClient.focusSpace(4)
             return true
         end
         if currKey == directionkey._5 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 5", true)
+            yabaiClient.focusSpace(5)
             return true
         end
         if currKey == directionkey._6 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 6", true)
+            yabaiClient.focusSpace(6)
             return true
         end
         if currKey == directionkey._7 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 7", true)
+            yabaiClient.focusSpace(7)
             return true
         end
         if currKey == directionkey._8 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 8", true)
+            yabaiClient.focusSpace(8)
             return true
         end
         if currKey == directionkey._9 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 9", true)
+            yabaiClient.focusSpace(9)
             return true
         end
         if currKey == directionkey._0 then
-            hs.execute("/opt/homebrew/bin/yabai -m space --focus 10", true)
+            yabaiClient.focusSpace(10)
             return true
         end
     end
