@@ -1,5 +1,24 @@
 _G.windowSearcher = {}
 local windowSearcher = _G.windowSearcher
+local YABAI_PATH = "/opt/homebrew/bin/yabai"
+local yabaiTasks = {}
+
+local function runYabai(args)
+    local task
+    task = hs.task.new(YABAI_PATH, function(exitCode, stdout, stderr)
+        yabaiTasks[task] = nil
+        if exitCode ~= 0 and stderr and stderr ~= "" then
+            hs.printf("windowSearcher yabai failed: %s", stderr)
+        end
+    end, args)
+
+    if task then
+        yabaiTasks[task] = true
+        if not task:start() then
+            yabaiTasks[task] = nil
+        end
+    end
+end
 
 -- The chooser object
 windowSearcher.chooser = hs.chooser.new(function(choice)
@@ -15,7 +34,7 @@ windowSearcher.chooser = hs.chooser.new(function(choice)
         
         -- Yabai fallback is extremely powerful for cross-space jumping, but we need the native window ID.
         -- Hammerspoon's win:id() perfectly matches Yabai's window ID!
-        hs.execute("/opt/homebrew/bin/yabai -m window --focus " .. choice.windowID, true)
+        runYabai({"-m", "window", "--focus", tostring(choice.windowID)})
     else
         hs.alert.show("Window no longer exists")
     end

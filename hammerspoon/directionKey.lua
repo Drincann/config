@@ -1,4 +1,5 @@
-directionkey = {}
+local directionkey = {}
+_G.directionkey = directionkey
 local function sendKey(mod, key)
     if _G.windowSearcher and _G.windowSearcher.chooser and _G.windowSearcher.chooser:isVisible() then
         local chooser = _G.windowSearcher.chooser
@@ -58,14 +59,13 @@ end
 -- end):start()
 
 -- https://github.com/Hammerspoon/hammerspoon/issues/3512
-function key_remapping()
+local function key_remapping()
     -- remap capslock to F13:
-    status = os.execute("hidutil property --set '{\"UserKeyMapping\":[{\"HIDKeyboardModifierMappingSrc\": 0x700000039, \"HIDKeyboardModifierMappingDst\": 0x700000068}]}'") 
+    local status = os.execute("hidutil property --set '{\"UserKeyMapping\":[{\"HIDKeyboardModifierMappingSrc\": 0x700000039, \"HIDKeyboardModifierMappingDst\": 0x700000068}]}'")
     if not status then
         hs.dialog.blockAlert("Key remapping failed", "Check with:\nhidutil property --get UserKeyMapping")
         return
     end
-    hs.alert.show("Key remapping successful")
 end
 key_remapping()
 
@@ -350,11 +350,8 @@ end
 directionkey.eventMouseDownAndFlagChange = hs.eventtap.new({hs.eventtap.event.types.otherMouseDown,hs.eventtap.event.types.flagsChanged}, function(e)
     -- log.i(e:getProperty(hs.eventtap.evento.oroperties['mouseEventButtonNumber']))
     -- directionkey.log.i(e:getKeyCode())
-    local currKey = e:getKeyCode()
-    if currKey == directionkey.SHIFT then
-        directionkey.shiftState = not directionkey.shiftState 
-        return false
-    end 
+    directionkey.shiftState = e:getFlags().shift == true
+    return false
 end)
 directionkey.eventMouseDownAndFlagChange:start()
 
@@ -370,108 +367,7 @@ directionkey.eventKeyUp = hs.eventtap.new({hs.eventtap.event.types.keyUp}, funct
 end)
 directionkey.eventKeyUp:start()
 
-
-directionkey.eventKeyDownDefault = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
-    -- directionkey.log.i(e:getKeyCode())
-    local currKey = e:getKeyCode()
-
-    if currKey == directionkey.capslock then
-        if not directionkey.capState then
-            directionkey.capState = true
-            hs.alert.closeAll()
-            -- 不消失
-            hs.alert.show('dir mod', {
-                atScreenEdge = 2,
-                textFont = "Fira Code",
-                textSize = 20
-            }, 'infinite')
-            -- directionkey.log.i("capslock toggle")
-            return true
-        else
-            return true
-        end
-    end
-    if directionkey.shiftState then
-        -- directionkey.log.i("otherkey down")
-        if currKey == directionkey.ESC then
-            sendKey("shift" , 50) -- 波浪
-            return true
-        end
-    end
-    if directionkey.capState then
-
-        -- directionkey.log.i("otherkey down")
-        if currKey == directionkey.ESC then
-            sendKey(nil, "`")
-            return true
-        end
-        if currKey == directionkey.H then
-            sendKey(nil, "left")
-            return true
-        end
-        if currKey == directionkey.J then
-            sendKey(nil, "down")
-            return true
-        end
-        if currKey == directionkey.L then
-            sendKey(nil, "right")
-            return true
-        end
-        if currKey == directionkey.K then
-            sendKey(nil, "up")
-            return true
-        end
-        if currKey == directionkey.E then
-            if string.find('alacritty', string.lower(hs.window.focusedWindow():application():name())) then
-                sendKey(nil, "home")
-            else
-                sendKey({"cmd"}, 'left')
-            end
-            return true
-        end
-        if currKey == directionkey.R then
-            if string.find('alacritty', string.lower(hs.window.focusedWindow():application():name())) then
-                sendKey(nil, "end")
-            else
-                sendKey({"cmd"}, 'right')
-            end
-            return true
-        end
-        if currKey == directionkey.D then
-            sendKey({"alt"}, "left")
-            return true
-        end
-        if currKey == directionkey.F then
-            sendKey({"alt"}, "right")
-            return true
-        end
-        if currKey == directionkey.showTerminal then
-            local alacritty = hs.application.find('Alacritty')
-            -- if alacritty is already focused, hide it
-            if hs.window.focusedWindow():application():name() == 'Alacritty' then
-                hs.application.find('Alacritty'):hide()
-                return true
-            end
-
-            -- if is not exist, launch it
-            if alacritty == nil then
-                hs.application.launchOrFocus('Alacritty')
-                alacritty = hs.application.find('Alacritty')
-            end
-
-            local currentSpace = hs.spaces.activeSpaceOnScreen()
-            hs.spaces.moveWindowToSpace(alacritty:mainWindow(), currentSpace)
-
-            -- focus it
-            alacritty:mainWindow():focus()
-            return true
-        end
-    end
-end)
-directionkey.eventKeyDownDefault:start()
-
 local function resetYabaiLeader()
-  directionkey.log.i('leader reset')
   directionkey.yabaiResizeLeaderPressed = false
   directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed = false
   directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed = false
@@ -482,287 +378,364 @@ end
 resetYabaiLeader()
 
 local function resetYabaiLock()
-  directionkey.log.i('leader reset')
   directionkey.yabaiSpaceSwitchLock = false
 end
 
 resetYabaiLock()
 
-directionkey.eventKeyDownYabai = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
-    -- directionkey.log.i(e:getKeyCode())
-    local currKey = e:getKeyCode()
-    if directionkey.capState == false then
-        if directionkey.yabaiResizeLeaderPressed == true then
-            -- directionkey.log.i('leader pressed resize window')
-            if currKey == directionkey.ENTER then
-                hs.alert.show("⚖️ Balancing Space")
-                yabaiClient.balanceSpace()
-                resetYabaiLeader()
-                return true
-            end
-            if currKey == directionkey.H then
-                yabaiClient.resizeWindowFromWest()
-                return true
-            end
-            if currKey == directionkey.J then
-                yabaiClient.resizeWindowFromNorth()
-                return true
-            end
-            if currKey == directionkey.K then
-                yabaiClient.resizeWindowFromSouth()
-                return true
-            end
-            if currKey == directionkey.L then
-                yabaiClient.resizeWindowFromEast()
-                return true
-            end
-            resetYabaiLeader()
-        end
+local function isYabaiLeaderActive()
+    return directionkey.yabaiResizeLeaderPressed
+        or directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed
+        or directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed
+        or directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed
+        or directionkey.yabaiWindowFocusOnLeaderPressed
+end
 
-        if directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed == true then
-            -- directionkey.log.i('leader pressed move window in space')
-            if currKey == directionkey.H then
-                yabaiClient.swapWindow("west")
-                return true
-            end
-            if currKey == directionkey.J then
-                yabaiClient.swapWindow("south")
-                return true
-            end
-            if currKey == directionkey.K then
-                yabaiClient.swapWindow("north")
-                return true
-            end
-            if currKey == directionkey.L then
-                yabaiClient.swapWindow("east")
-                return true
-            end
-            resetYabaiLeader()
-        end
-
-        if directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed == true then
-            -- directionkey.log.i('leader pressed move window to display')
-            if currKey == directionkey._1 then
-                yabaiClient.moveWindowToDisplay(1)
-                resetYabaiLeader()
-                return true
-            end
-            if currKey == directionkey._2 then
-                yabaiClient.moveWindowToDisplay(2)
-                resetYabaiLeader()
-                return true
-            end
-            if currKey == directionkey._3 then
-                yabaiClient.moveWindowToDisplay(3)
-                resetYabaiLeader()
-                return true
-            end
-            if currKey == directionkey._4 then
-                yabaiClient.moveWindowToDisplay(4)
-                resetYabaiLeader()
-                return true
-            end
-            resetYabaiLeader()
-        end
-        if directionkey.yabaiWindowFocusOnLeaderPressed == true then
-            if currKey == directionkey.H then
-                yabaiClient.focusWindow("west")
-                return true
-            end
-            if currKey == directionkey.J then
-                yabaiClient.focusWindow("south")
-                return true
-            end
-            if currKey == directionkey.K then
-                yabaiClient.focusWindow("north")
-                return true
-            end
-            if currKey == directionkey.L then
-                yabaiClient.focusWindow("east")
-                return true
-            end
-            resetYabaiLeader()
-        end
-        if directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed == true then
-            if currKey == directionkey.S or currKey == directionkey.N then
-                yabaiClient.moveWindowToNextSpace()
-                return true
-            end
-            if currKey == directionkey.A or currKey == directionkey.P then
-                yabaiClient.moveWindowToPreviousSpace()
-                return true
-            end
-            if currKey == directionkey.C then
-                yabaiClient.createSpaceAndMoveFocusedWindow()
-                return true
-            end
-            if currKey == directionkey._1 then
-                yabaiClient.moveWindowToSpace(1)
-                yabaiClient.focusSpace(1)
-                return true
-            end
-            if currKey == directionkey._2 then
-                yabaiClient.moveWindowToSpace(2)
-                yabaiClient.focusSpace(2)
-                return true
-            end
-            if currKey == directionkey._3 then
-                yabaiClient.moveWindowToSpace(3)
-                yabaiClient.focusSpace(3)
-                return true
-            end
-            if currKey == directionkey._4 then
-                yabaiClient.moveWindowToSpace(4)
-                yabaiClient.focusSpace(4)
-                return true
-            end
-            if currKey == directionkey._5 then
-                yabaiClient.moveWindowToSpace(5)
-                yabaiClient.focusSpace(5)
-                return true
-            end
-            if currKey == directionkey._6 then
-                yabaiClient.moveWindowToSpace(6)
-                yabaiClient.focusSpace(6)
-                return true
-            end
-            if currKey == directionkey._7 then
-                yabaiClient.moveWindowToSpace(7)
-                yabaiClient.focusSpace(7)
-                return true
-            end
-            if currKey == directionkey._8 then
-                yabaiClient.moveWindowToSpace(8)
-                yabaiClient.focusSpace(8)
-                return true
-            end
-            if currKey == directionkey._9 then
-                yabaiClient.moveWindowToSpace(9)
-                yabaiClient.focusSpace(9)
-                return true
-            end
-            if currKey == directionkey._0 then
-                yabaiClient.moveWindowToSpace(10)
-                yabaiClient.focusSpace(10)
-                return true
-            end
-          resetYabaiLeader()
-        end
+local function focusedAppName()
+    local win = hs.window.focusedWindow()
+    if not win then
+        return nil
     end
 
-    if directionkey.capState == true then
-        if currKey == directionkey.SPACE then
-            if _G.windowHintsPlugin then
-                _G.windowHintsPlugin.toggle()
-            end
+    local app = win:application()
+    return app and app:name() or nil
+end
+
+local function isFocusedApp(appName)
+    return focusedAppName() == appName
+end
+
+local function focusAlacrittyOnCurrentSpace(attempt)
+    attempt = attempt or 1
+
+    local app = hs.application.find("Alacritty")
+    if isFocusedApp("Alacritty") then
+        if app then
+            app:hide()
+        end
+        return
+    end
+
+    if not app then
+        hs.application.launchOrFocus("Alacritty")
+        if attempt < 10 then
+            hs.timer.doAfter(0.15, function() focusAlacrittyOnCurrentSpace(attempt + 1) end)
+        end
+        return
+    end
+
+    local win = app:mainWindow()
+    if not win then
+        hs.application.launchOrFocus("Alacritty")
+        if attempt < 10 then
+            hs.timer.doAfter(0.15, function() focusAlacrittyOnCurrentSpace(attempt + 1) end)
+        else
+            hs.alert.show("Alacritty window not ready")
+        end
+        return
+    end
+
+    local currentSpace = hs.spaces.activeSpaceOnScreen()
+    if currentSpace then
+        pcall(hs.spaces.moveWindowToSpace, win, currentSpace)
+    end
+    win:focus()
+end
+
+local function moveWindowToSpaceAndFocus(space)
+    yabaiClient.moveWindowToSpace(space)
+    yabaiClient.focusSpace(space)
+end
+
+local function handleYabaiLeaderKey(currKey)
+    if directionkey.yabaiResizeLeaderPressed then
+        if currKey == directionkey.ENTER then
+            hs.alert.show("⚖️ Balancing Space")
+            yabaiClient.balanceSpace()
+            resetYabaiLeader()
+            return true
+        elseif currKey == directionkey.H then
+            yabaiClient.resizeWindowFromWest()
+            return true
+        elseif currKey == directionkey.J then
+            yabaiClient.resizeWindowFromNorth()
+            return true
+        elseif currKey == directionkey.K then
+            yabaiClient.resizeWindowFromSouth()
+            return true
+        elseif currKey == directionkey.L then
+            yabaiClient.resizeWindowFromEast()
             return true
         end
-        if currKey == directionkey.W then
-            directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed = true
+        resetYabaiLeader()
+        return false
+    end
+
+    if directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed then
+        if currKey == directionkey.H then
+            yabaiClient.swapWindow("west")
+            return true
+        elseif currKey == directionkey.J then
+            yabaiClient.swapWindow("south")
+            return true
+        elseif currKey == directionkey.K then
+            yabaiClient.swapWindow("north")
+            return true
+        elseif currKey == directionkey.L then
+            yabaiClient.swapWindow("east")
             return true
         end
-        if currKey == directionkey.D then
-            directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed = true
-        end
-        if currKey == directionkey.F then
-            directionkey.yabaiWindowFocusOnLeaderPressed = true
-        end
-        if currKey == directionkey.M then
-            directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed = true
+        resetYabaiLeader()
+        return false
+    end
+
+    if directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed then
+        if currKey == directionkey._1 then
+            yabaiClient.moveWindowToDisplay(1)
+            resetYabaiLeader()
+            return true
+        elseif currKey == directionkey._2 then
+            yabaiClient.moveWindowToDisplay(2)
+            resetYabaiLeader()
+            return true
+        elseif currKey == directionkey._3 then
+            yabaiClient.moveWindowToDisplay(3)
+            resetYabaiLeader()
+            return true
+        elseif currKey == directionkey._4 then
+            yabaiClient.moveWindowToDisplay(4)
+            resetYabaiLeader()
             return true
         end
-        if currKey == directionkey.Z then
-            directionkey.yabaiResizeLeaderPressed = true
-            return true
-        end
-        if currKey == directionkey.X then
-            hs.alert.show("📌 Toggle Sticky")
-            yabaiClient.toggleSticky()
-            return true
-        end
-        if currKey == directionkey.Y then
+        resetYabaiLeader()
+        return false
+    end
+
+    if directionkey.yabaiWindowFocusOnLeaderPressed then
+        if currKey == directionkey.H then
             yabaiClient.focusWindow("west")
             return true
-        end
-        if currKey == directionkey.U then
+        elseif currKey == directionkey.J then
             yabaiClient.focusWindow("south")
             return true
-        end
-        if currKey == directionkey.I then
+        elseif currKey == directionkey.K then
             yabaiClient.focusWindow("north")
             return true
-        end
-        if currKey == directionkey.O then
+        elseif currKey == directionkey.L then
             yabaiClient.focusWindow("east")
             return true
         end
-        if currKey == directionkey.C then
-            hs.alert.show("🚀 Creating new Space...")
-            yabaiClient.createSpaceAndFocus()
-            return true
-        end
-        if currKey == directionkey.Q then
-            hs.alert.show("🗑 Destroying current Space...")
-            yabaiClient.destroyFocusedSpace()
-            return true
-        end
+        resetYabaiLeader()
+        return false
+    end
+
+    if directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed then
         if currKey == directionkey.S or currKey == directionkey.N then
-            switchYabaiSpace("next")
+            yabaiClient.moveWindowToNextSpace()
+            return true
+        elseif currKey == directionkey.A or currKey == directionkey.P then
+            yabaiClient.moveWindowToPreviousSpace()
+            return true
+        elseif currKey == directionkey.C then
+            yabaiClient.createSpaceAndMoveFocusedWindow()
+            return true
+        elseif currKey == directionkey._1 then
+            moveWindowToSpaceAndFocus(1)
+            return true
+        elseif currKey == directionkey._2 then
+            moveWindowToSpaceAndFocus(2)
+            return true
+        elseif currKey == directionkey._3 then
+            moveWindowToSpaceAndFocus(3)
+            return true
+        elseif currKey == directionkey._4 then
+            moveWindowToSpaceAndFocus(4)
+            return true
+        elseif currKey == directionkey._5 then
+            moveWindowToSpaceAndFocus(5)
+            return true
+        elseif currKey == directionkey._6 then
+            moveWindowToSpaceAndFocus(6)
+            return true
+        elseif currKey == directionkey._7 then
+            moveWindowToSpaceAndFocus(7)
+            return true
+        elseif currKey == directionkey._8 then
+            moveWindowToSpaceAndFocus(8)
+            return true
+        elseif currKey == directionkey._9 then
+            moveWindowToSpaceAndFocus(9)
+            return true
+        elseif currKey == directionkey._0 then
+            moveWindowToSpaceAndFocus(10)
             return true
         end
-        if currKey == directionkey.A or currKey == directionkey.P then
-            switchYabaiSpace("prev")
-            return true
+        resetYabaiLeader()
+        return false
+    end
+
+    return false
+end
+
+local function handleCapsModeKey(currKey, flags)
+    if flags.shift and currKey == directionkey.ESC then
+        sendKey("shift", 50)
+        return true
+    end
+
+    if currKey == directionkey.ESC then
+        sendKey(nil, "`")
+        return true
+    elseif currKey == directionkey.H then
+        sendKey(nil, "left")
+        return true
+    elseif currKey == directionkey.J then
+        sendKey(nil, "down")
+        return true
+    elseif currKey == directionkey.L then
+        sendKey(nil, "right")
+        return true
+    elseif currKey == directionkey.K then
+        sendKey(nil, "up")
+        return true
+    elseif currKey == directionkey.E then
+        if isFocusedApp("Alacritty") then
+            sendKey(nil, "home")
+        else
+            sendKey({"cmd"}, "left")
         end
-        if currKey == directionkey.LEFT_BRACKET then
-            yabaiClient.focusRecentWindow()
-            return true
+        return true
+    elseif currKey == directionkey.R then
+        if isFocusedApp("Alacritty") then
+            sendKey(nil, "end")
+        else
+            sendKey({"cmd"}, "right")
         end
-        -- 聚焦屏幕
-        if currKey == directionkey._1 then
-            yabaiClient.focusSpace(1)
-            return true
+        return true
+    elseif currKey == directionkey.D then
+        directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed = true
+        sendKey({"alt"}, "left")
+        return true
+    elseif currKey == directionkey.F then
+        directionkey.yabaiWindowFocusOnLeaderPressed = true
+        sendKey({"alt"}, "right")
+        return true
+    elseif currKey == directionkey.showTerminal then
+        focusAlacrittyOnCurrentSpace()
+        return true
+    elseif currKey == directionkey.SPACE then
+        if _G.windowHintsPlugin then
+            _G.windowHintsPlugin.toggle()
         end
-        if currKey == directionkey._2 then
-            yabaiClient.focusSpace(2)
-            return true
-        end
-        if currKey == directionkey._3 then
-            yabaiClient.focusSpace(3)
-            return true
-        end
-        if currKey == directionkey._4 then
-            yabaiClient.focusSpace(4)
-            return true
-        end
-        if currKey == directionkey._5 then
-            yabaiClient.focusSpace(5)
-            return true
-        end
-        if currKey == directionkey._6 then
-            yabaiClient.focusSpace(6)
-            return true
-        end
-        if currKey == directionkey._7 then
-            yabaiClient.focusSpace(7)
-            return true
-        end
-        if currKey == directionkey._8 then
-            yabaiClient.focusSpace(8)
-            return true
-        end
-        if currKey == directionkey._9 then
-            yabaiClient.focusSpace(9)
-            return true
-        end
-        if currKey == directionkey._0 then
-            yabaiClient.focusSpace(10)
+        return true
+    elseif currKey == directionkey.W then
+        directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed = true
+        return true
+    elseif currKey == directionkey.M then
+        directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed = true
+        return true
+    elseif currKey == directionkey.Z then
+        directionkey.yabaiResizeLeaderPressed = true
+        return true
+    elseif currKey == directionkey.X then
+        hs.alert.show("📌 Toggle Sticky")
+        yabaiClient.toggleSticky()
+        return true
+    elseif currKey == directionkey.Y then
+        yabaiClient.focusWindow("west")
+        return true
+    elseif currKey == directionkey.U then
+        yabaiClient.focusWindow("south")
+        return true
+    elseif currKey == directionkey.I then
+        yabaiClient.focusWindow("north")
+        return true
+    elseif currKey == directionkey.O then
+        yabaiClient.focusWindow("east")
+        return true
+    elseif currKey == directionkey.C then
+        hs.alert.show("🚀 Creating new Space...")
+        yabaiClient.createSpaceAndFocus()
+        return true
+    elseif currKey == directionkey.Q then
+        hs.alert.show("🗑 Destroying current Space...")
+        yabaiClient.destroyFocusedSpace()
+        return true
+    elseif currKey == directionkey.S or currKey == directionkey.N then
+        switchYabaiSpace("next")
+        return true
+    elseif currKey == directionkey.A or currKey == directionkey.P then
+        switchYabaiSpace("prev")
+        return true
+    elseif currKey == directionkey.LEFT_BRACKET then
+        yabaiClient.focusRecentWindow()
+        return true
+    elseif currKey == directionkey._1 then
+        yabaiClient.focusSpace(1)
+        return true
+    elseif currKey == directionkey._2 then
+        yabaiClient.focusSpace(2)
+        return true
+    elseif currKey == directionkey._3 then
+        yabaiClient.focusSpace(3)
+        return true
+    elseif currKey == directionkey._4 then
+        yabaiClient.focusSpace(4)
+        return true
+    elseif currKey == directionkey._5 then
+        yabaiClient.focusSpace(5)
+        return true
+    elseif currKey == directionkey._6 then
+        yabaiClient.focusSpace(6)
+        return true
+    elseif currKey == directionkey._7 then
+        yabaiClient.focusSpace(7)
+        return true
+    elseif currKey == directionkey._8 then
+        yabaiClient.focusSpace(8)
+        return true
+    elseif currKey == directionkey._9 then
+        yabaiClient.focusSpace(9)
+        return true
+    elseif currKey == directionkey._0 then
+        yabaiClient.focusSpace(10)
+        return true
+    end
+
+    return false
+end
+
+directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, function(e)
+    local currKey = e:getKeyCode()
+    local flags = e:getFlags()
+    directionkey.shiftState = flags.shift == true
+
+    if not directionkey.capState and isYabaiLeaderActive() then
+        if handleYabaiLeaderKey(currKey) then
             return true
         end
     end
 
+    if currKey == directionkey.capslock then
+        if not directionkey.capState then
+            directionkey.capState = true
+            hs.alert.closeAll()
+            hs.alert.show("dir mod", {
+                atScreenEdge = 2,
+                textFont = "Fira Code",
+                textSize = 20
+            }, "infinite")
+        end
+        return true
+    end
+
+    if directionkey.capState then
+        return handleCapsModeKey(currKey, flags)
+    end
+
+    return false
 end)
-directionkey.eventKeyDownYabai:start()
+directionkey.eventKeyDown:start()
 
 
 return directionkey
