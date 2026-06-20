@@ -9,7 +9,8 @@
 yabai -m config external_bar all:38:0
 
 # startup
-yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
+yabai -m signal --remove yabai_load_sa 2>/dev/null
+yabai -m signal --add label=yabai_load_sa event=dock_did_restart action="sudo yabai --load-sa"
 sudo yabai --load-sa
 
 # layout
@@ -44,15 +45,39 @@ yabai -m config focus_follows_mouse autoraise
 # set mouse follows focus mode (default: off)
 # yabai -m config mouse_follows_focus on
 
+# Tencent Meeting creates floating/share-control windows that can fight yabai focus.
+yabai -m rule --remove tencent_meeting_cn_app 2>/dev/null
+yabai -m rule --remove tencent_meeting_en_app 2>/dev/null
+yabai -m rule --remove tencent_meeting_cn_title 2>/dev/null
+yabai -m rule --remove tencent_meeting_en_title 2>/dev/null
+yabai -m rule --add label=tencent_meeting_cn_app app="^腾讯会议$" manage=off opacity=1.0
+yabai -m rule --add label=tencent_meeting_en_app app="^TencentMeeting$" manage=off opacity=1.0
+yabai -m rule --add label=tencent_meeting_cn_title title="^腾讯会议$" manage=off opacity=1.0
+yabai -m rule --add label=tencent_meeting_en_title title="^TencentMeeting$" manage=off opacity=1.0
+
+restore_focus_follows_mouse='if ! yabai -m query --windows | jq -e ".[] | select(.app == \"腾讯会议\" or .app == \"TencentMeeting\")" >/dev/null; then yabai -m config focus_follows_mouse autoraise; fi'
+yabai -m signal --remove tencent_meeting_cn_focus_guard_start 2>/dev/null
+yabai -m signal --remove tencent_meeting_en_focus_guard_start 2>/dev/null
+yabai -m signal --remove tencent_meeting_cn_focus_guard_stop 2>/dev/null
+yabai -m signal --remove tencent_meeting_en_focus_guard_stop 2>/dev/null
+yabai -m signal --add label=tencent_meeting_cn_focus_guard_start event=application_launched app="^腾讯会议$" action="yabai -m config focus_follows_mouse off"
+yabai -m signal --add label=tencent_meeting_en_focus_guard_start event=application_launched app="^TencentMeeting$" action="yabai -m config focus_follows_mouse off"
+yabai -m signal --add label=tencent_meeting_cn_focus_guard_stop event=application_terminated app="^腾讯会议$" action="$restore_focus_follows_mouse"
+yabai -m signal --add label=tencent_meeting_en_focus_guard_stop event=application_terminated app="^TencentMeeting$" action="$restore_focus_follows_mouse"
+if yabai -m query --windows | jq -e '.[] | select(.app == "腾讯会议" or .app == "TencentMeeting")' >/dev/null; then
+    yabai -m config focus_follows_mouse off
+fi
+
+focus_first_non_meeting_window='window_id=$(yabai -m query --windows --space | jq -r "map(select(.\"is-minimized\" == false and .\"is-hidden\" == false and .app != \"腾讯会议\" and .app != \"TencentMeeting\")) | .[0].id // empty"); if [ -n "$window_id" ]; then yabai -m window --focus "$window_id"; fi'
+
 # focus window after active space changes
-yabai -m signal --add event=space_changed action="yabai -m window --focus \$(yabai -m query --windows --space | jq .[0].id)"
+yabai -m signal --remove focus_after_space_changed 2>/dev/null
+yabai -m signal --add label=focus_after_space_changed event=space_changed action="$focus_first_non_meeting_window"
 
 # focus window after active display changes
-yabai -m signal --add event=display_changed action="yabai -m window --focus \$(yabai -m query --windows --space | jq .[0].id)"
+yabai -m signal --remove focus_after_display_changed 2>/dev/null
+yabai -m signal --add label=focus_after_display_changed event=display_changed action="$focus_first_non_meeting_window"
 
 # highlight focused window
 # https://github.com/FelixKratz/JankyBorders
 yabai -m config window_shadow float
-
-# set focus follows mouse mode (default: off, options: off, autoraise, autofocus)
-yabai -m config focus_follows_mouse autoraise
