@@ -1,5 +1,4 @@
 local canvas = require("hs.canvas")
-local drawing = require("hs.drawing")
 local screen = require("hs.screen")
 local spaces = require("hs.spaces")
 local task = require("hs.task")
@@ -23,10 +22,24 @@ local STACK_BORDER_COLOR = {
     blue = 0x9b / 0xff,
     alpha = 1.0
 }
-local STACK_BADGE_WIDTH = 86
-local STACK_BADGE_HEIGHT = 30
+local STACK_BADGE_HEIGHT = 36
+local STACK_BADGE_PADDING = 11
+local STACK_MARKER_DIAMETER = 14
+local STACK_MARKER_GAP = 8
+local STACK_ACTIVE_COLOR = {
+    red = 0x30 / 0xff,
+    green = 0xd1 / 0xff,
+    blue = 0x58 / 0xff,
+    alpha = 1.0
+}
+local STACK_INACTIVE_COLOR = {
+    red = 0x8e / 0xff,
+    green = 0x8e / 0xff,
+    blue = 0x93 / 0xff,
+    alpha = 0.9
+}
 
-local borderDrawing = nil
+local focusBorderCanvas = nil
 local stackBadge = nil
 local focusedWindow = nil
 local focusedWindowFilter = nil
@@ -36,6 +49,7 @@ local screenWatcher = nil
 local spaceWatcher = nil
 local stackStatusTasks = {}
 local stackStatusGeneration = 0
+local visibleStackSize = 0
 
 local function hideStackBadge()
     if stackBadge then
@@ -44,39 +58,79 @@ local function hideStackBadge()
 end
 
 local function showNormalFocusState()
-    if borderDrawing and focusedWindow then
-        borderDrawing
-            :setFrame(focusedWindow:frame())
-            :setStrokeColor(FOCUS_BORDER_COLOR)
-            :show()
+    if focusBorderCanvas and focusedWindow then
+        focusBorderCanvas:frame(focusedWindow:frame())
+        focusBorderCanvas[1].strokeColor = FOCUS_BORDER_COLOR
+        focusBorderCanvas:show()
     end
+    visibleStackSize = 0
     hideStackBadge()
 end
 
+local function stackBadgeWidth(stackSize)
+    return STACK_BADGE_PADDING * 2
+        + STACK_MARKER_DIAMETER * stackSize
+        + STACK_MARKER_GAP * math.max(0, stackSize - 1)
+end
+
 local function moveStackBadge(targetWindow)
-    if not stackBadge or not targetWindow then
+    if not stackBadge or not targetWindow or visibleStackSize == 0 then
         return
     end
 
     local frame = targetWindow:frame()
+    local badgeWidth = stackBadgeWidth(visibleStackSize)
     stackBadge:frame({
-        x = frame.x + frame.w - STACK_BADGE_WIDTH - 10,
+        x = frame.x + frame.w - badgeWidth - 10,
         y = frame.y + frame.h - STACK_BADGE_HEIGHT - 10,
-        w = STACK_BADGE_WIDTH,
+        w = badgeWidth,
         h = STACK_BADGE_HEIGHT
     })
 end
 
+local function stackBadgeElements(stackIndex, stackSize)
+    local elements = {
+        {
+            type = "rectangle",
+            action = "fill",
+            fillColor = { red = 0.08, green = 0.09, blue = 0.14, alpha = 0.92 },
+            roundedRectRadii = { xRadius = 9, yRadius = 9 },
+            frame = { x = 0, y = 0, w = stackBadgeWidth(stackSize), h = STACK_BADGE_HEIGHT }
+        }
+    }
+
+    local markerRadius = STACK_MARKER_DIAMETER / 2
+    for index = 1, stackSize do
+        local isActive = index == stackIndex
+        table.insert(elements, {
+            type = "circle",
+            action = isActive and "strokeAndFill" or "stroke",
+            center = {
+                x = STACK_BADGE_PADDING + markerRadius
+                    + (index - 1) * (STACK_MARKER_DIAMETER + STACK_MARKER_GAP),
+                y = STACK_BADGE_HEIGHT / 2
+            },
+            radius = markerRadius,
+            fillColor = STACK_ACTIVE_COLOR,
+            strokeColor = isActive and STACK_ACTIVE_COLOR or STACK_INACTIVE_COLOR,
+            strokeWidth = 2.5
+        })
+    end
+    return elements
+end
+
 local function showStackState(targetWindow, stackIndex, stackSize)
-    if not borderDrawing or not stackBadge then
+    if not focusBorderCanvas or not stackBadge then
         return
     end
 
-    borderDrawing
-        :setFrame(targetWindow:frame())
-        :setStrokeColor(STACK_BORDER_COLOR)
-        :show()
-    stackBadge[2].text = string.format("S %d/%d", stackIndex, stackSize)
+    focusBorderCanvas:frame(targetWindow:frame())
+    focusBorderCanvas[1].strokeColor = STACK_BORDER_COLOR
+    focusBorderCanvas:show()
+    visibleStackSize = stackSize
+    stackBadge
+        :size({ w = stackBadgeWidth(stackSize), h = STACK_BADGE_HEIGHT })
+        :replaceElements(stackBadgeElements(stackIndex, stackSize))
     moveStackBadge(targetWindow)
     stackBadge:show()
 end
@@ -167,8 +221,8 @@ end
 local function hideBorder()
     stackStatusGeneration = stackStatusGeneration + 1
     focusedWindow = nil
-    if borderDrawing then
-        borderDrawing:hide()
+    if focusBorderCanvas then
+        focusBorderCanvas:hide()
     end
     hideStackBadge()
 end
@@ -188,12 +242,12 @@ local function drawBorder(targetWindow)
     local focusChanged = not focusedWindow or focusedWindow:id() ~= targetWindow:id()
     focusedWindow = targetWindow
     if focusChanged then
-        borderDrawing:hide()
+        focusBorderCanvas:hide()
         hideStackBadge()
         queryFocusedWindowStack()
         return
     end
-    borderDrawing:setFrame(targetWindow:frame()):show()
+    focusBorderCanvas:frame(targetWindow:frame()):show()
     moveStackBadge(targetWindow)
     scheduleStackStatusRefresh()
 end
@@ -229,15 +283,7 @@ end
 function focusBorder.start()
     focusBorder.stop()
 
-    borderDrawing = drawing.rectangle({ x = -5, y = -5, w = 1, h = 1 })
-        :setFill(false)
-        :setStroke(true)
-        :setStrokeWidth(BORDER_WIDTH)
-        :setStrokeColor(FOCUS_BORDER_COLOR)
-        :setLevel("overlay")
-        :setBehaviorByLabels({ "canJoinAllSpaces", "transient" })
-
-    stackBadge = canvas.new({ x = -5, y = -5, w = STACK_BADGE_WIDTH, h = STACK_BADGE_HEIGHT })
+    focusBorderCanvas = canvas.new({ x = -5, y = -5, w = 1, h = 1 })
         :level("overlay")
         :behavior({ "canJoinAllSpaces", "transient" })
         :clickActivating(false)
@@ -245,21 +291,20 @@ function focusBorder.start()
         :appendElements({
             {
                 type = "rectangle",
-                action = "fill",
-                fillColor = { red = 0.08, green = 0.09, blue = 0.14, alpha = 0.92 },
-                roundedRectRadii = { xRadius = 8, yRadius = 8 },
-                frame = { x = 0, y = 0, w = STACK_BADGE_WIDTH, h = STACK_BADGE_HEIGHT }
-            },
-            {
-                type = "text",
-                text = "",
-                textColor = STACK_BORDER_COLOR,
-                textFont = "SF Mono",
-                textSize = 14,
-                textAlignment = "center",
-                frame = { x = 0, y = 5, w = STACK_BADGE_WIDTH, h = STACK_BADGE_HEIGHT - 5 }
+                action = "stroke",
+                strokeColor = FOCUS_BORDER_COLOR,
+                strokeWidth = BORDER_WIDTH,
+                roundedRectRadii = { xRadius = 12, yRadius = 12 },
+                padding = BORDER_WIDTH / 2,
+                frame = { x = 0, y = 0, w = "100%", h = "100%" }
             }
         })
+
+    stackBadge = canvas.new({ x = -5, y = -5, w = 1, h = STACK_BADGE_HEIGHT })
+        :level("overlay")
+        :behavior({ "canJoinAllSpaces", "transient" })
+        :clickActivating(false)
+        :canvasMouseEvents(false, false, false, false)
 
     refreshTimer = timer.delayed.new(0.05, refreshBorder)
     stackStatusTimer = timer.delayed.new(0.08, queryFocusedWindowStack)
@@ -298,11 +343,12 @@ function focusBorder.stop()
         stackBadge:delete()
         stackBadge = nil
     end
-    if borderDrawing then
-        borderDrawing:delete()
-        borderDrawing = nil
+    if focusBorderCanvas then
+        focusBorderCanvas:delete()
+        focusBorderCanvas = nil
     end
     stackStatusTasks = {}
+    visibleStackSize = 0
     focusedWindow = nil
 end
 
