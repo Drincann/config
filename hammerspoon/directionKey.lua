@@ -246,8 +246,36 @@ function yabaiClient.stackWindowFrom(direction, onExit)
     yabaiClient.run({"-m", "window", "--stack", direction}, onExit)
 end
 
-function yabaiClient.extractStackWindowTo(direction, onExit)
-    yabaiClient.run({"-m", "window", "--warp", direction}, onExit)
+function yabaiClient.runSequence(commands, onExit)
+    local function runNext(index)
+        if index > #commands then
+            if onExit then
+                onExit(0)
+            end
+            return
+        end
+
+        yabaiClient.run(commands[index], function(exitCode, stdout, stderr)
+            if exitCode ~= 0 then
+                if onExit then
+                    onExit(exitCode, stdout, stderr)
+                end
+                return
+            end
+            runNext(index + 1)
+        end)
+    end
+
+    runNext(1)
+end
+
+function yabaiClient.reinsertStackWindow(windowId, direction, onExit)
+    local selectedWindowId = tostring(windowId)
+    yabaiClient.runSequence({
+        {"-m", "window", selectedWindowId, "--insert", direction},
+        {"-m", "window", selectedWindowId, "--toggle", "float"},
+        {"-m", "window", selectedWindowId, "--toggle", "float"}
+    }, onExit)
 end
 
 function yabaiClient.focusStackWindow(selector, onExit)
@@ -268,6 +296,18 @@ function yabaiClient.queryWindow(selector, onResult)
 
         local ok, window = pcall(hs.json.decode, stdout)
         onResult(ok and window or nil)
+    end)
+end
+
+function yabaiClient.queryWindowsInFocusedSpace(onResult)
+    yabaiClient.run({"-m", "query", "--windows", "--space"}, function(exitCode, stdout)
+        if exitCode ~= 0 then
+            onResult({})
+            return
+        end
+
+        local ok, windows = pcall(hs.json.decode, stdout)
+        onResult(ok and windows or {})
     end)
 end
 
@@ -309,13 +349,95 @@ function stackController.absorbFrom(direction)
     end)
 end
 
-function stackController.extractTo(direction)
-    yabaiClient.extractStackWindowTo(direction, function(exitCode)
-        if exitCode == 0 then
-            hs.alert.show("Unstacked " .. stackDirectionLabel(direction), 0.6)
-        else
-            hs.alert.show("Cannot unstack " .. stackDirectionLabel(direction), 0.6)
+local function framesMatch(left, right)
+    if not left or not right then
+        return false
+    end
+
+    local tolerance = 1
+    return math.abs(left.x - right.x) <= tolerance
+        and math.abs(left.y - right.y) <= tolerance
+        and math.abs(left.w - right.w) <= tolerance
+        and math.abs(left.h - right.h) <= tolerance
+end
+
+function stackController.queryFocusedStack(onResult)
+    yabaiClient.queryWindow(nil, function(focusedWindow)
+        if not focusedWindow or focusedWindow["stack-index"] == 0 then
+            onResult(nil, {})
+            return
         end
+
+        yabaiClient.queryWindowsInFocusedSpace(function(windows)
+            local stackWindows = {}
+            for _, window in ipairs(windows) do
+                if window["stack-index"] > 0 and framesMatch(window.frame, focusedWindow.frame) then
+                    table.insert(stackWindows, window)
+                end
+            end
+            table.sort(stackWindows, function(left, right)
+                return left["stack-index"] < right["stack-index"]
+            end)
+            onResult(focusedWindow, stackWindows)
+        end)
+    end)
+end
+
+function stackController.extractTo(direction)
+    stackController.queryFocusedStack(function(focusedWindow)
+        if not focusedWindow then
+            hs.alert.show("Not in a Stack", 0.6)
+            return
+        end
+
+        yabaiClient.reinsertStackWindow(focusedWindow.id, direction, function(exitCode)
+            if exitCode == 0 then
+                hs.alert.show("Unstacked " .. stackDirectionLabel(direction), 0.6)
+            else
+                hs.alert.show("Cannot unstack " .. stackDirectionLabel(direction), 0.6)
+            end
+        end)
+    end)
+end
+
+function stackController.extractAll(onComplete)
+    stackController.queryFocusedStack(function(focusedWindow, stackWindows)
+        if not focusedWindow or #stackWindows < 2 then
+            hs.alert.show("Not in a Stack", 0.6)
+            if onComplete then onComplete() end
+            return
+        end
+
+        local windowsToExtract = {}
+        for index = #stackWindows, 1, -1 do
+            local window = stackWindows[index]
+            if window.id ~= focusedWindow.id then
+                table.insert(windowsToExtract, window)
+            end
+        end
+
+        local extractedCount = 0
+        local function extractNext()
+            local window = table.remove(windowsToExtract, 1)
+            if not window then
+                hs.alert.show(string.format("Unstacked %d windows", extractedCount + 1), 0.8)
+                if onComplete then onComplete() end
+                return
+            end
+
+            yabaiClient.reinsertStackWindow(window.id, "east", function(exitCode)
+                if exitCode ~= 0 then
+                    hs.alert.show("Cannot unstack all windows", 0.8)
+                    if onComplete then onComplete() end
+                    return
+                end
+
+                extractedCount = extractedCount + 1
+                hs.timer.doAfter(0.05, extractNext)
+            end)
+        end
+
+        extractNext()
     end)
 end
 
@@ -451,12 +573,52 @@ directionkey.eventMouseDownAndFlagChange = hs.eventtap.new({hs.eventtap.event.ty
 end)
 directionkey.eventMouseDownAndFlagChange:start()
 
+local YABAI_MODE_ALERT_STYLE = {
+    atScreenEdge = 2,
+    textFont = "Fira Code",
+    textSize = 16
+}
+
+local yabaiModeIndicator = { alertId = nil }
+
+function yabaiModeIndicator.show(message)
+    if yabaiModeIndicator.alertId then
+        hs.alert.closeSpecific(yabaiModeIndicator.alertId, 0)
+    end
+    yabaiModeIndicator.alertId = hs.alert.show(message, YABAI_MODE_ALERT_STYLE, nil, "infinite")
+end
+
+function yabaiModeIndicator.hide()
+    if not yabaiModeIndicator.alertId then
+        return
+    end
+    hs.alert.closeSpecific(yabaiModeIndicator.alertId, 0.08)
+    yabaiModeIndicator.alertId = nil
+end
+
+local function closeCapsModeIndicator()
+    if not directionkey.capsModeAlertId then
+        return
+    end
+    hs.alert.closeSpecific(directionkey.capsModeAlertId, 0.08)
+    directionkey.capsModeAlertId = nil
+end
+
+local function showCapsModeIndicator()
+    closeCapsModeIndicator()
+    directionkey.capsModeAlertId = hs.alert.show("dir mod", {
+        atScreenEdge = 2,
+        textFont = "Fira Code",
+        textSize = 20
+    }, nil, "infinite")
+end
+
 directionkey.eventKeyUp = hs.eventtap.new({hs.eventtap.event.types.keyUp}, function(e)
     local currKey = e:getKeyCode()
     -- directionkey.log.i(currKey)
     if currKey == directionkey.capslock then
         directionkey.capState = false
-        hs.alert.closeAll()
+        closeCapsModeIndicator()
         -- hs.alert.show(capState,{atScreenEdge=2, textFont="Fira Code", textSize=20}, 'infi')
         return true
     end
@@ -470,9 +632,17 @@ local function resetYabaiLeader()
   directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed = false
   directionkey.yabaiWindowFocusOnLeaderPressed = false
   directionkey.yabaiStackLeaderPressed = false
+  yabaiModeIndicator.hide()
 end
 
 resetYabaiLeader()
+
+local function activateYabaiLeader(flagName, message)
+    resetYabaiLeader()
+    directionkey[flagName] = true
+    closeCapsModeIndicator()
+    yabaiModeIndicator.show(message)
+end
 
 local function resetYabaiLock()
   directionkey.yabaiSpaceSwitchLock = false
@@ -517,6 +687,11 @@ local function moveWindowToSpaceAndFocus(space)
 end
 
 local function handleYabaiLeaderKey(currKey, flags)
+    if currKey == directionkey.ESC then
+        resetYabaiLeader()
+        return true
+    end
+
     if directionkey.yabaiStackLeaderPressed then
         local direction = nil
         if currKey == directionkey.H then
@@ -527,9 +702,11 @@ local function handleYabaiLeaderKey(currKey, flags)
             direction = "north"
         elseif currKey == directionkey.L then
             direction = "east"
-        elseif currKey == directionkey.ENTER or currKey == directionkey.ESC then
+        elseif currKey == directionkey.X then
+            stackController.extractAll(resetYabaiLeader)
+            return true
+        elseif currKey == directionkey.ENTER then
             resetYabaiLeader()
-            hs.alert.closeAll()
             return true
         end
 
@@ -706,11 +883,11 @@ local function handleCapsModeKey(currKey, flags)
         end
         return true
     elseif currKey == directionkey.D then
-        directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed = true
+        activateYabaiLeader("yabaiWindowMoveWindowToDisplayLeaderPressed", "MOVE DISPLAY · 1–4 target · Esc exit")
         sendKey({"alt"}, "left")
         return true
     elseif currKey == directionkey.F then
-        directionkey.yabaiWindowFocusOnLeaderPressed = true
+        activateYabaiLeader("yabaiWindowFocusOnLeaderPressed", "FOCUS WINDOW · HJKL · Esc exit")
         sendKey({"alt"}, "right")
         return true
     elseif currKey == directionkey.showTerminal then
@@ -722,13 +899,13 @@ local function handleCapsModeKey(currKey, flags)
         end
         return true
     elseif currKey == directionkey.W then
-        directionkey.yabaiWindowMoveWindowInSpaceLeaderPressed = true
+        activateYabaiLeader("yabaiWindowMoveWindowInSpaceLeaderPressed", "SWAP WINDOW · HJKL · Esc exit")
         return true
     elseif currKey == directionkey.M then
-        directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed = true
+        activateYabaiLeader("yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed", "MOVE SPACE · A/S/C/1–0 · Esc exit")
         return true
     elseif currKey == directionkey.Z then
-        directionkey.yabaiResizeLeaderPressed = true
+        activateYabaiLeader("yabaiResizeLeaderPressed", "RESIZE · HJKL · Enter balance · Esc exit")
         return true
     elseif currKey == directionkey.X then
         hs.alert.show("📌 Toggle Sticky")
@@ -739,8 +916,7 @@ local function handleCapsModeKey(currKey, flags)
         yabaiClient.toggleWindowedFullscreen()
         return true
     elseif currKey == directionkey.G then
-        directionkey.yabaiStackLeaderPressed = true
-        hs.alert.show("Stack · HJKL absorb · ⇧HJKL extract", 1.2)
+        activateYabaiLeader("yabaiStackLeaderPressed", "STACK · HJKL absorb · ⇧HJKL extract · X all · Esc exit")
         return true
     elseif currKey == directionkey.COMMA then
         stackController.focus("stack.prev")
@@ -831,12 +1007,7 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
     if currKey == directionkey.capslock then
         if not directionkey.capState then
             directionkey.capState = true
-            hs.alert.closeAll()
-            hs.alert.show("dir mod", {
-                atScreenEdge = 2,
-                textFont = "Fira Code",
-                textSize = 20
-            }, "infinite")
+            showCapsModeIndicator()
         end
         return true
     end
