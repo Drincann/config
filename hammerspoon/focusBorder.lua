@@ -44,8 +44,11 @@ local function hideStackBadge()
 end
 
 local function showNormalFocusState()
-    if borderDrawing then
-        borderDrawing:setStrokeColor(FOCUS_BORDER_COLOR)
+    if borderDrawing and focusedWindow then
+        borderDrawing
+            :setFrame(focusedWindow:frame())
+            :setStrokeColor(FOCUS_BORDER_COLOR)
+            :show()
     end
     hideStackBadge()
 end
@@ -69,7 +72,10 @@ local function showStackState(targetWindow, stackIndex, stackSize)
         return
     end
 
-    borderDrawing:setStrokeColor(STACK_BORDER_COLOR)
+    borderDrawing
+        :setFrame(targetWindow:frame())
+        :setStrokeColor(STACK_BORDER_COLOR)
+        :show()
     stackBadge[2].text = string.format("S %d/%d", stackIndex, stackSize)
     moveStackBadge(targetWindow)
     stackBadge:show()
@@ -147,6 +153,8 @@ local function queryFocusedWindowStack()
             stackStatusTasks[queryTask] = nil
             showNormalFocusState()
         end
+    else
+        showNormalFocusState()
     end
 end
 
@@ -179,11 +187,14 @@ local function drawBorder(targetWindow)
 
     local focusChanged = not focusedWindow or focusedWindow:id() ~= targetWindow:id()
     focusedWindow = targetWindow
+    if focusChanged then
+        borderDrawing:hide()
+        hideStackBadge()
+        queryFocusedWindowStack()
+        return
+    end
     borderDrawing:setFrame(targetWindow:frame()):show()
     moveStackBadge(targetWindow)
-    if focusChanged then
-        showNormalFocusState()
-    end
     scheduleStackStatusRefresh()
 end
 
