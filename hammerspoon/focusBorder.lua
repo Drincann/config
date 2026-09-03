@@ -1,32 +1,168 @@
+local canvas = require("hs.canvas")
 local drawing = require("hs.drawing")
 local screen = require("hs.screen")
 local spaces = require("hs.spaces")
+local task = require("hs.task")
 local timer = require("hs.timer")
 local window = require("hs.window")
 local windowFilter = require("hs.window.filter")
 
 local focusBorder = {}
 
+local YABAI_PATH = "/opt/homebrew/bin/yabai"
 local BORDER_WIDTH = 4
-local BORDER_COLOR = {
+local FOCUS_BORDER_COLOR = {
     red = 0x7a / 0xff,
     green = 0xa2 / 0xff,
     blue = 0xf7 / 0xff,
     alpha = 1.0
 }
+local STACK_BORDER_COLOR = {
+    red = 0xbb / 0xff,
+    green = 0x9a / 0xff,
+    blue = 0xf7 / 0xff,
+    alpha = 1.0
+}
+local STACK_BADGE_WIDTH = 58
+local STACK_BADGE_HEIGHT = 22
 
 local borderDrawing = nil
+local stackBadge = nil
 local focusedWindow = nil
 local focusedWindowFilter = nil
 local refreshTimer = nil
+local stackStatusTimer = nil
 local screenWatcher = nil
 local spaceWatcher = nil
+local stackStatusTasks = {}
+local stackStatusGeneration = 0
+
+local function hideStackBadge()
+    if stackBadge then
+        stackBadge:hide()
+    end
+end
+
+local function showNormalFocusState()
+    if borderDrawing then
+        borderDrawing:setStrokeColor(FOCUS_BORDER_COLOR)
+    end
+    hideStackBadge()
+end
+
+local function moveStackBadge(targetWindow)
+    if not stackBadge or not targetWindow then
+        return
+    end
+
+    local frame = targetWindow:frame()
+    stackBadge:frame({
+        x = frame.x + frame.w - STACK_BADGE_WIDTH - 8,
+        y = frame.y + 8,
+        w = STACK_BADGE_WIDTH,
+        h = STACK_BADGE_HEIGHT
+    })
+end
+
+local function showStackState(targetWindow, stackIndex, stackSize)
+    if not borderDrawing or not stackBadge then
+        return
+    end
+
+    borderDrawing:setStrokeColor(STACK_BORDER_COLOR)
+    stackBadge[2].text = string.format("S %d/%d", stackIndex, stackSize)
+    moveStackBadge(targetWindow)
+    stackBadge:show()
+end
+
+local function framesMatch(left, right)
+    if not left or not right then
+        return false
+    end
+
+    local tolerance = 1
+    return math.abs(left.x - right.x) <= tolerance
+        and math.abs(left.y - right.y) <= tolerance
+        and math.abs(left.w - right.w) <= tolerance
+        and math.abs(left.h - right.h) <= tolerance
+end
+
+local function queryFocusedWindowStack()
+    if not focusedWindow then
+        showNormalFocusState()
+        return
+    end
+
+    stackStatusGeneration = stackStatusGeneration + 1
+    local requestGeneration = stackStatusGeneration
+    local focusedWindowId = focusedWindow:id()
+    local queryTask
+    queryTask = task.new(YABAI_PATH, function(exitCode, stdout)
+        stackStatusTasks[queryTask] = nil
+        if requestGeneration ~= stackStatusGeneration
+            or not focusedWindow
+            or focusedWindow:id() ~= focusedWindowId then
+            return
+        end
+
+        if exitCode ~= 0 then
+            showNormalFocusState()
+            return
+        end
+
+        local decoded, windows = pcall(hs.json.decode, stdout)
+        if not decoded or type(windows) ~= "table" then
+            showNormalFocusState()
+            return
+        end
+
+        local focusedWindowData = nil
+        for _, windowData in ipairs(windows) do
+            if windowData.id == focusedWindowId then
+                focusedWindowData = windowData
+                break
+            end
+        end
+
+        local stackIndex = focusedWindowData and focusedWindowData["stack-index"] or 0
+        if stackIndex == 0 then
+            showNormalFocusState()
+            return
+        end
+
+        local stackSize = 0
+        for _, windowData in ipairs(windows) do
+            if windowData.space == focusedWindowData.space
+                and windowData["stack-index"] > 0
+                and framesMatch(windowData.frame, focusedWindowData.frame) then
+                stackSize = stackSize + 1
+            end
+        end
+        showStackState(focusedWindow, stackIndex, stackSize)
+    end, { "-m", "query", "--windows" })
+
+    if queryTask then
+        stackStatusTasks[queryTask] = true
+        if not queryTask:start() then
+            stackStatusTasks[queryTask] = nil
+            showNormalFocusState()
+        end
+    end
+end
+
+local function scheduleStackStatusRefresh()
+    if stackStatusTimer then
+        stackStatusTimer:start()
+    end
+end
 
 local function hideBorder()
+    stackStatusGeneration = stackStatusGeneration + 1
     focusedWindow = nil
     if borderDrawing then
         borderDrawing:hide()
     end
+    hideStackBadge()
 end
 
 local function canDrawBorder(targetWindow)
@@ -41,8 +177,14 @@ local function drawBorder(targetWindow)
         return
     end
 
+    local focusChanged = not focusedWindow or focusedWindow:id() ~= targetWindow:id()
     focusedWindow = targetWindow
     borderDrawing:setFrame(targetWindow:frame()):show()
+    moveStackBadge(targetWindow)
+    if focusChanged then
+        showNormalFocusState()
+    end
+    scheduleStackStatusRefresh()
 end
 
 local function refreshBorder()
@@ -69,6 +211,10 @@ local focusedWindowEvents = {
     [windowFilter.windowDestroyed] = scheduleRefresh
 }
 
+function focusBorder.refresh()
+    refreshBorder()
+end
+
 function focusBorder.start()
     focusBorder.stop()
 
@@ -76,11 +222,36 @@ function focusBorder.start()
         :setFill(false)
         :setStroke(true)
         :setStrokeWidth(BORDER_WIDTH)
-        :setStrokeColor(BORDER_COLOR)
+        :setStrokeColor(FOCUS_BORDER_COLOR)
         :setLevel("overlay")
         :setBehaviorByLabels({ "canJoinAllSpaces", "transient" })
 
+    stackBadge = canvas.new({ x = -5, y = -5, w = STACK_BADGE_WIDTH, h = STACK_BADGE_HEIGHT })
+        :level("overlay")
+        :behavior({ "canJoinAllSpaces", "transient" })
+        :clickActivating(false)
+        :canvasMouseEvents(false, false, false, false)
+        :appendElements({
+            {
+                type = "rectangle",
+                action = "fill",
+                fillColor = { red = 0.08, green = 0.09, blue = 0.14, alpha = 0.92 },
+                roundedRectRadii = { xRadius = 6, yRadius = 6 },
+                frame = { x = 0, y = 0, w = STACK_BADGE_WIDTH, h = STACK_BADGE_HEIGHT }
+            },
+            {
+                type = "text",
+                text = "",
+                textColor = STACK_BORDER_COLOR,
+                textFont = "SF Mono",
+                textSize = 11,
+                textAlignment = "center",
+                frame = { x = 0, y = 3, w = STACK_BADGE_WIDTH, h = STACK_BADGE_HEIGHT - 3 }
+            }
+        })
+
     refreshTimer = timer.delayed.new(0.05, refreshBorder)
+    stackStatusTimer = timer.delayed.new(0.08, queryFocusedWindowStack)
     focusedWindowFilter = windowFilter.copy(windowFilter.default, "focus-border")
         :setOverrideFilter({ focused = true })
         :subscribe(focusedWindowEvents, true)
@@ -90,6 +261,7 @@ function focusBorder.start()
 end
 
 function focusBorder.stop()
+    stackStatusGeneration = stackStatusGeneration + 1
     if focusedWindowFilter then
         focusedWindowFilter:unsubscribe(focusedWindowEvents)
         focusedWindowFilter:delete()
@@ -107,10 +279,19 @@ function focusBorder.stop()
         refreshTimer:stop()
         refreshTimer = nil
     end
+    if stackStatusTimer then
+        stackStatusTimer:stop()
+        stackStatusTimer = nil
+    end
+    if stackBadge then
+        stackBadge:delete()
+        stackBadge = nil
+    end
     if borderDrawing then
         borderDrawing:delete()
         borderDrawing = nil
     end
+    stackStatusTasks = {}
     focusedWindow = nil
 end
 

@@ -1,5 +1,6 @@
 local directionkey = {}
 _G.directionkey = directionkey
+local focusBorder = require("focusBorder")
 local function sendKey(mod, key)
     if _G.windowSearcher and _G.windowSearcher.chooser and _G.windowSearcher.chooser:isVisible() then
         local chooser = _G.windowSearcher.chooser
@@ -324,6 +325,7 @@ local function stackDirectionLabel(direction)
 end
 
 function stackController.showStatus(fallbackMessage)
+    focusBorder.refresh()
     yabaiClient.queryWindow(nil, function(focusedWindow)
         local stackIndex = focusedWindow and focusedWindow["stack-index"] or 0
         if stackIndex == 0 then
@@ -392,6 +394,7 @@ function stackController.extractTo(direction)
 
         yabaiClient.reinsertStackWindow(focusedWindow.id, direction, function(exitCode)
             if exitCode == 0 then
+                focusBorder.refresh()
                 hs.alert.show("Unstacked " .. stackDirectionLabel(direction), 0.6)
             else
                 hs.alert.show("Cannot unstack " .. stackDirectionLabel(direction), 0.6)
@@ -420,6 +423,7 @@ function stackController.extractAll(onComplete)
         local function extractNext()
             local window = table.remove(windowsToExtract, 1)
             if not window then
+                focusBorder.refresh()
                 hs.alert.show(string.format("Unstacked %d windows", extractedCount + 1), 0.8)
                 if onComplete then onComplete() end
                 return
@@ -427,6 +431,7 @@ function stackController.extractAll(onComplete)
 
             yabaiClient.reinsertStackWindow(window.id, "east", function(exitCode)
                 if exitCode ~= 0 then
+                    focusBorder.refresh()
                     hs.alert.show("Cannot unstack all windows", 0.8)
                     if onComplete then onComplete() end
                     return
