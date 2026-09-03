@@ -1,7 +1,4 @@
-# macos 解决方案
+# macOS 键盘与窗口管理
 
-~1. 在系统设置中将 Capslock 映射为无动作~
-
-~2. 使用 Karabiner 将 Capslock 映射到 mouse button 3~
-
-现在不需要 karabiner, 见 directionKey.lua zhognying `key_remapping` 方法.
+Caps Lock 由 `directionKey.lua` 中的 `key_remapping` 方法通过 `hidutil`
+映射为 F13，并作为 Hammerspoon 的 leader key 使用，不再依赖 Karabiner。

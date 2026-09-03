@@ -233,6 +233,14 @@ function yabaiClient.toggleSticky()
     yabaiClient.run({"-m", "window", "--toggle", "sticky"})
 end
 
+function yabaiClient.toggleTerminalScratchpad(onExit)
+    yabaiClient.run({"-m", "window", "--toggle", "terminal"}, onExit)
+end
+
+function yabaiClient.toggleWindowedFullscreen()
+    yabaiClient.run({"-m", "window", "--toggle", "windowed-fullscreen"})
+end
+
 function yabaiClient.resizeWindowFromWest()
     yabaiClient.runShell(YABAI_PATH .. " -m window west --resize right:-50:0 2> /dev/null || " .. YABAI_PATH .. " -m window --resize right:-50:0")
 end
@@ -405,41 +413,12 @@ local function isFocusedApp(appName)
     return focusedAppName() == appName
 end
 
-local function focusAlacrittyOnCurrentSpace(attempt)
-    attempt = attempt or 1
-
-    local app = hs.application.find("Alacritty")
-    if isFocusedApp("Alacritty") then
-        if app then
-            app:hide()
+local function toggleTerminalScratchpad()
+    yabaiClient.toggleTerminalScratchpad(function(exitCode)
+        if exitCode ~= 0 then
+            hs.application.launchOrFocus("Alacritty")
         end
-        return
-    end
-
-    if not app then
-        hs.application.launchOrFocus("Alacritty")
-        if attempt < 10 then
-            hs.timer.doAfter(0.15, function() focusAlacrittyOnCurrentSpace(attempt + 1) end)
-        end
-        return
-    end
-
-    local win = app:mainWindow()
-    if not win then
-        hs.application.launchOrFocus("Alacritty")
-        if attempt < 10 then
-            hs.timer.doAfter(0.15, function() focusAlacrittyOnCurrentSpace(attempt + 1) end)
-        else
-            hs.alert.show("Alacritty window not ready")
-        end
-        return
-    end
-
-    local currentSpace = hs.spaces.activeSpaceOnScreen()
-    if currentSpace then
-        pcall(hs.spaces.moveWindowToSpace, win, currentSpace)
-    end
-    win:focus()
+    end)
 end
 
 local function moveWindowToSpaceAndFocus(space)
@@ -578,11 +557,6 @@ local function handleYabaiLeaderKey(currKey)
 end
 
 local function handleCapsModeKey(currKey, flags)
-    if flags.shift and currKey == directionkey.ESC then
-        sendKey("shift", 50)
-        return true
-    end
-
     if currKey == directionkey.ESC then
         sendKey(nil, "`")
         return true
@@ -621,7 +595,7 @@ local function handleCapsModeKey(currKey, flags)
         sendKey({"alt"}, "right")
         return true
     elseif currKey == directionkey.showTerminal then
-        focusAlacrittyOnCurrentSpace()
+        toggleTerminalScratchpad()
         return true
     elseif currKey == directionkey.SPACE then
         if _G.windowHintsPlugin then
@@ -640,6 +614,10 @@ local function handleCapsModeKey(currKey, flags)
     elseif currKey == directionkey.X then
         hs.alert.show("📌 Toggle Sticky")
         yabaiClient.toggleSticky()
+        return true
+    elseif currKey == directionkey.B then
+        hs.alert.show("▣ Windowed Fullscreen", 0.5)
+        yabaiClient.toggleWindowedFullscreen()
         return true
     elseif currKey == directionkey.Y then
         yabaiClient.focusWindow("west")
@@ -709,6 +687,11 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
     local currKey = e:getKeyCode()
     local flags = e:getFlags()
     directionkey.shiftState = flags.shift == true
+
+    if not directionkey.capState and flags.shift and currKey == directionkey.ESC then
+        sendKey({"shift"}, 50)
+        return true
+    end
 
     if not directionkey.capState and isYabaiLeaderActive() then
         if handleYabaiLeaderKey(currKey) then

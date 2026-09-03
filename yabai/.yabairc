@@ -30,10 +30,11 @@ yabai -m config window_opacity on
 yabai -m config active_window_opacity 1.0
 yabai -m config normal_window_opacity 0.9
 #  animation
-yabai -m config \
-    window_animation_duration 0.2 \
-    window_animation_easing ease_out_expo \
-    window_opacity_duration 0.1 
+# Disabled by default. Try 0.08 / ease_out_expo / 0.05 at runtime when desired.
+# yabai -m config \
+#     window_animation_duration 0.08 \
+#     window_animation_easing ease_out_expo \
+#     window_opacity_duration 0.05
 
 
 # set mouse interaction modifier key (default: fn)
@@ -54,6 +55,13 @@ yabai -m rule --add label=tencent_meeting_cn_app app="^腾讯会议$" manage=off
 yabai -m rule --add label=tencent_meeting_en_app app="^TencentMeeting$" manage=off opacity=1.0
 yabai -m rule --add label=tencent_meeting_cn_title title="^腾讯会议$" manage=off opacity=1.0
 yabai -m rule --add label=tencent_meeting_en_title title="^TencentMeeting$" manage=off opacity=1.0
+
+# Keep one Alacritty window available as a native yabai scratchpad.
+yabai -m rule --remove alacritty_terminal_scratchpad 2>/dev/null
+yabai -m rule --add label=alacritty_terminal_scratchpad app="^Alacritty$" scratchpad=terminal
+
+# Rules normally affect only newly-created windows. Also apply them after a restart.
+yabai -m rule --apply
 
 restore_focus_follows_mouse='if ! yabai -m query --windows | jq -e ".[] | select(.app == \"腾讯会议\" or .app == \"TencentMeeting\")" >/dev/null; then yabai -m config focus_follows_mouse autoraise; fi'
 yabai -m signal --remove tencent_meeting_cn_focus_guard_start 2>/dev/null
