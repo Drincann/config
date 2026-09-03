@@ -585,7 +585,7 @@ function yabaiModeIndicator.show(message)
     if yabaiModeIndicator.alertId then
         hs.alert.closeSpecific(yabaiModeIndicator.alertId, 0)
     end
-    yabaiModeIndicator.alertId = hs.alert.show(message, YABAI_MODE_ALERT_STYLE, nil, "infinite")
+    yabaiModeIndicator.alertId = hs.alert.show(message, YABAI_MODE_ALERT_STYLE, "infinite")
 end
 
 function yabaiModeIndicator.hide()
@@ -610,7 +610,7 @@ local function showCapsModeIndicator()
         atScreenEdge = 2,
         textFont = "Fira Code",
         textSize = 20
-    }, nil, "infinite")
+    }, "infinite")
 end
 
 directionkey.eventKeyUp = hs.eventtap.new({hs.eventtap.event.types.keyUp}, function(e)
