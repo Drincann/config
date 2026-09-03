@@ -12,15 +12,15 @@ local focusBorder = {}
 local YABAI_PATH = "/opt/homebrew/bin/yabai"
 local BORDER_WIDTH = 4
 local FOCUS_BORDER_COLOR = {
-    red = 0x7a / 0xff,
-    green = 0xa2 / 0xff,
-    blue = 0xf7 / 0xff,
+    red = 0xff / 0xff,
+    green = 0xcc / 0xff,
+    blue = 0x00 / 0xff,
     alpha = 1.0
 }
 local STACK_BORDER_COLOR = {
-    red = 0xbb / 0xff,
-    green = 0x9a / 0xff,
-    blue = 0xf7 / 0xff,
+    red = 0xff / 0xff,
+    green = 0x2d / 0xff,
+    blue = 0x9b / 0xff,
     alpha = 1.0
 }
 local STACK_BADGE_WIDTH = 58
