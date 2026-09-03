@@ -9,7 +9,8 @@ local windowFilter = require("hs.window.filter")
 local focusBorder = {}
 
 local YABAI_PATH = "/opt/homebrew/bin/yabai"
-local BORDER_WIDTH = 6
+local BORDER_WIDTH = 3
+local BORDER_OUTSIDE_WIDTH = 1
 local FOCUS_BORDER_COLOR = {
     red = 0xff / 0xff,
     green = 0xcc / 0xff,
@@ -57,9 +58,19 @@ local function hideStackBadge()
     end
 end
 
+local function expandedBorderFrame(targetWindow)
+    local frame = targetWindow:frame()
+    return {
+        x = frame.x - BORDER_OUTSIDE_WIDTH,
+        y = frame.y - BORDER_OUTSIDE_WIDTH,
+        w = frame.w + BORDER_OUTSIDE_WIDTH * 2,
+        h = frame.h + BORDER_OUTSIDE_WIDTH * 2
+    }
+end
+
 local function showNormalFocusState()
     if focusBorderCanvas and focusedWindow then
-        focusBorderCanvas:frame(focusedWindow:frame())
+        focusBorderCanvas:frame(expandedBorderFrame(focusedWindow))
         focusBorderCanvas[1].strokeColor = FOCUS_BORDER_COLOR
         focusBorderCanvas:show()
     end
@@ -124,7 +135,7 @@ local function showStackState(targetWindow, stackIndex, stackSize)
         return
     end
 
-    focusBorderCanvas:frame(targetWindow:frame())
+    focusBorderCanvas:frame(expandedBorderFrame(targetWindow))
     focusBorderCanvas[1].strokeColor = STACK_BORDER_COLOR
     focusBorderCanvas:show()
     visibleStackSize = stackSize
@@ -247,7 +258,7 @@ local function drawBorder(targetWindow)
         queryFocusedWindowStack()
         return
     end
-    focusBorderCanvas:frame(targetWindow:frame()):show()
+    focusBorderCanvas:frame(expandedBorderFrame(targetWindow)):show()
     moveStackBadge(targetWindow)
     scheduleStackStatusRefresh()
 end
