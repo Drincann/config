@@ -23,8 +23,8 @@ local STACK_BORDER_COLOR = {
     blue = 0x9b / 0xff,
     alpha = 1.0
 }
-local STACK_BADGE_WIDTH = 58
-local STACK_BADGE_HEIGHT = 22
+local STACK_BADGE_WIDTH = 86
+local STACK_BADGE_HEIGHT = 30
 
 local borderDrawing = nil
 local stackBadge = nil
@@ -57,8 +57,8 @@ local function moveStackBadge(targetWindow)
 
     local frame = targetWindow:frame()
     stackBadge:frame({
-        x = frame.x + frame.w - STACK_BADGE_WIDTH - 8,
-        y = frame.y + 8,
+        x = frame.x + frame.w - STACK_BADGE_WIDTH - 10,
+        y = frame.y + frame.h - STACK_BADGE_HEIGHT - 10,
         w = STACK_BADGE_WIDTH,
         h = STACK_BADGE_HEIGHT
     })
@@ -236,7 +236,7 @@ function focusBorder.start()
                 type = "rectangle",
                 action = "fill",
                 fillColor = { red = 0.08, green = 0.09, blue = 0.14, alpha = 0.92 },
-                roundedRectRadii = { xRadius = 6, yRadius = 6 },
+                roundedRectRadii = { xRadius = 8, yRadius = 8 },
                 frame = { x = 0, y = 0, w = STACK_BADGE_WIDTH, h = STACK_BADGE_HEIGHT }
             },
             {
@@ -244,9 +244,9 @@ function focusBorder.start()
                 text = "",
                 textColor = STACK_BORDER_COLOR,
                 textFont = "SF Mono",
-                textSize = 11,
+                textSize = 14,
                 textAlignment = "center",
-                frame = { x = 0, y = 3, w = STACK_BADGE_WIDTH, h = STACK_BADGE_HEIGHT - 3 }
+                frame = { x = 0, y = 5, w = STACK_BADGE_WIDTH, h = STACK_BADGE_HEIGHT - 5 }
             }
         })
 
