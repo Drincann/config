@@ -1,4 +1,5 @@
 require('hs.ipc')
+require('focusBorder')
 require('pasteboardHistory')
 require('directionKey')
 require('windowManager')
