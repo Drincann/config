@@ -99,6 +99,7 @@ directionkey.S = hs.keycodes.map["S"]
 directionkey.E = hs.keycodes.map["E"]
 directionkey.D = hs.keycodes.map["D"]
 directionkey.F = hs.keycodes.map["F"]
+directionkey.G = hs.keycodes.map["G"]
 directionkey.W = hs.keycodes.map["W"]
 directionkey.Y = hs.keycodes.map["Y"]
 directionkey.U = hs.keycodes.map["U"]
@@ -241,6 +242,93 @@ function yabaiClient.toggleWindowedFullscreen()
     yabaiClient.run({"-m", "window", "--toggle", "windowed-fullscreen"})
 end
 
+function yabaiClient.stackWindowFrom(direction, onExit)
+    yabaiClient.run({"-m", "window", "--stack", direction}, onExit)
+end
+
+function yabaiClient.extractStackWindowTo(direction, onExit)
+    yabaiClient.run({"-m", "window", "--warp", direction}, onExit)
+end
+
+function yabaiClient.focusStackWindow(selector, onExit)
+    yabaiClient.run({"-m", "window", "--focus", selector}, onExit)
+end
+
+function yabaiClient.queryWindow(selector, onResult)
+    local args = {"-m", "query", "--windows", "--window"}
+    if selector then
+        table.insert(args, selector)
+    end
+
+    yabaiClient.run(args, function(exitCode, stdout)
+        if exitCode ~= 0 then
+            onResult(nil)
+            return
+        end
+
+        local ok, window = pcall(hs.json.decode, stdout)
+        onResult(ok and window or nil)
+    end)
+end
+
+local stackController = {}
+
+local function stackDirectionLabel(direction)
+    local labels = {
+        west = "←",
+        south = "↓",
+        north = "↑",
+        east = "→"
+    }
+    return labels[direction] or direction
+end
+
+function stackController.showStatus(fallbackMessage)
+    yabaiClient.queryWindow(nil, function(focusedWindow)
+        local stackIndex = focusedWindow and focusedWindow["stack-index"] or 0
+        if stackIndex == 0 then
+            hs.alert.show(fallbackMessage or "Not in a Stack", 0.6)
+            return
+        end
+
+        yabaiClient.queryWindow("stack.last", function(lastWindow)
+            local stackSize = lastWindow and lastWindow["stack-index"] or stackIndex
+            local appName = focusedWindow.app or "Window"
+            hs.alert.show(string.format("Stack %d/%d · %s", stackIndex, stackSize, appName), 0.6)
+        end)
+    end)
+end
+
+function stackController.absorbFrom(direction)
+    yabaiClient.stackWindowFrom(direction, function(exitCode)
+        if exitCode == 0 then
+            hs.timer.doAfter(0.05, stackController.showStatus)
+        else
+            hs.alert.show("No window " .. stackDirectionLabel(direction), 0.6)
+        end
+    end)
+end
+
+function stackController.extractTo(direction)
+    yabaiClient.extractStackWindowTo(direction, function(exitCode)
+        if exitCode == 0 then
+            hs.alert.show("Unstacked " .. stackDirectionLabel(direction), 0.6)
+        else
+            hs.alert.show("Cannot unstack " .. stackDirectionLabel(direction), 0.6)
+        end
+    end)
+end
+
+function stackController.focus(selector)
+    yabaiClient.focusStackWindow(selector, function(exitCode)
+        if exitCode == 0 then
+            hs.timer.doAfter(0.05, stackController.showStatus)
+        else
+            hs.alert.show("Not in a Stack", 0.6)
+        end
+    end)
+end
+
 function yabaiClient.resizeWindowFromWest()
     yabaiClient.runShell(YABAI_PATH .. " -m window west --resize right:-50:0 2> /dev/null || " .. YABAI_PATH .. " -m window --resize right:-50:0")
 end
@@ -381,6 +469,7 @@ local function resetYabaiLeader()
   directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed = false
   directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed = false
   directionkey.yabaiWindowFocusOnLeaderPressed = false
+  directionkey.yabaiStackLeaderPressed = false
 end
 
 resetYabaiLeader()
@@ -397,6 +486,7 @@ local function isYabaiLeaderActive()
         or directionkey.yabaiWindowMoveWindowToSpaceOrDisplayLeaderPressed
         or directionkey.yabaiWindowMoveWindowToDisplayLeaderPressed
         or directionkey.yabaiWindowFocusOnLeaderPressed
+        or directionkey.yabaiStackLeaderPressed
 end
 
 local function focusedAppName()
@@ -426,7 +516,36 @@ local function moveWindowToSpaceAndFocus(space)
     yabaiClient.focusSpace(space)
 end
 
-local function handleYabaiLeaderKey(currKey)
+local function handleYabaiLeaderKey(currKey, flags)
+    if directionkey.yabaiStackLeaderPressed then
+        local direction = nil
+        if currKey == directionkey.H then
+            direction = "west"
+        elseif currKey == directionkey.J then
+            direction = "south"
+        elseif currKey == directionkey.K then
+            direction = "north"
+        elseif currKey == directionkey.L then
+            direction = "east"
+        elseif currKey == directionkey.ENTER or currKey == directionkey.ESC then
+            resetYabaiLeader()
+            hs.alert.closeAll()
+            return true
+        end
+
+        if direction then
+            if flags.shift then
+                stackController.extractTo(direction)
+            else
+                stackController.absorbFrom(direction)
+            end
+            return true
+        end
+
+        resetYabaiLeader()
+        return false
+    end
+
     if directionkey.yabaiResizeLeaderPressed then
         if currKey == directionkey.ENTER then
             hs.alert.show("⚖️ Balancing Space")
@@ -619,6 +738,16 @@ local function handleCapsModeKey(currKey, flags)
         hs.alert.show("▣ Windowed Fullscreen", 0.5)
         yabaiClient.toggleWindowedFullscreen()
         return true
+    elseif currKey == directionkey.G then
+        directionkey.yabaiStackLeaderPressed = true
+        hs.alert.show("Stack · HJKL absorb · ⇧HJKL extract", 1.2)
+        return true
+    elseif currKey == directionkey.COMMA then
+        stackController.focus("stack.prev")
+        return true
+    elseif currKey == directionkey.DOT then
+        stackController.focus("stack.next")
+        return true
     elseif currKey == directionkey.Y then
         yabaiClient.focusWindow("west")
         return true
@@ -694,7 +823,7 @@ directionkey.eventKeyDown = hs.eventtap.new({hs.eventtap.event.types.keyDown}, f
     end
 
     if not directionkey.capState and isYabaiLeaderActive() then
-        if handleYabaiLeaderKey(currKey) then
+        if handleYabaiLeaderKey(currKey, flags) then
             return true
         end
     end
