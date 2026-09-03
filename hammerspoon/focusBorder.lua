@@ -11,6 +11,7 @@ local focusBorder = {}
 local YABAI_PATH = "/opt/homebrew/bin/yabai"
 local BORDER_WIDTH = 3
 local BORDER_OUTSIDE_WIDTH = 1
+local CONTINUOUS_CORNER_RADIUS = 12
 local FOCUS_BORDER_COLOR = {
     red = 0xff / 0xff,
     green = 0xcc / 0xff,
@@ -68,9 +69,78 @@ local function expandedBorderFrame(targetWindow)
     }
 end
 
+local function continuousBorderCoordinates(frame)
+    local inset = BORDER_WIDTH / 2
+    local left = inset
+    local top = inset
+    local right = frame.w - inset
+    local bottom = frame.h - inset
+    local radius = math.min(
+        CONTINUOUS_CORNER_RADIUS,
+        (right - left) / 2 / 1.52866483,
+        (bottom - top) / 2 / 1.52866483
+    )
+
+    local function topLeft(x, y)
+        return { x = left + x * radius, y = top + y * radius }
+    end
+    local function topRight(x, y)
+        return { x = right - x * radius, y = top + y * radius }
+    end
+    local function bottomRight(x, y)
+        return { x = right - x * radius, y = bottom - y * radius }
+    end
+    local function bottomLeft(x, y)
+        return { x = left + x * radius, y = bottom - y * radius }
+    end
+    local function line(point)
+        return { x = point.x, y = point.y }
+    end
+    local function curve(endpoint, control1, control2)
+        return {
+            x = endpoint.x,
+            y = endpoint.y,
+            c1x = control1.x,
+            c1y = control1.y,
+            c2x = control2.x,
+            c2y = control2.y
+        }
+    end
+
+    return {
+        line(topLeft(1.52866483, 0.00000000)),
+        line(topRight(1.52866471, 0.00000000)),
+        curve(topRight(0.66993427, 0.06549600), topRight(1.08849323, 0.00000000), topRight(0.86840689, 0.00000000)),
+        line(topRight(0.63149399, 0.07491100)),
+        curve(topRight(0.07491176, 0.63149399), topRight(0.37282392, 0.16905899), topRight(0.16906013, 0.37282401)),
+        curve(topRight(0.00000000, 1.52866483), topRight(0.00000000, 0.86840701), topRight(0.00000000, 1.08849299)),
+        line(bottomRight(0.00000000, 1.52866471)),
+        curve(bottomRight(0.06549569, 0.66993493), bottomRight(0.00000000, 1.08849323), bottomRight(0.00000000, 0.86840689)),
+        line(bottomRight(0.07491111, 0.63149399)),
+        curve(bottomRight(0.63149399, 0.07491111), bottomRight(0.16905883, 0.37282392), bottomRight(0.37282392, 0.16905883)),
+        curve(bottomRight(1.52866471, 0.00000000), bottomRight(0.86840689, 0.00000000), bottomRight(1.08849323, 0.00000000)),
+        line(bottomLeft(1.52866483, 0.00000000)),
+        curve(bottomLeft(0.66993397, 0.06549569), bottomLeft(1.08849299, 0.00000000), bottomLeft(0.86840701, 0.00000000)),
+        line(bottomLeft(0.63149399, 0.07491111)),
+        curve(bottomLeft(0.07491100, 0.63149399), bottomLeft(0.37282401, 0.16905883), bottomLeft(0.16906001, 0.37282392)),
+        curve(bottomLeft(0.00000000, 1.52866471), bottomLeft(0.00000000, 0.86840689), bottomLeft(0.00000000, 1.08849323)),
+        line(topLeft(0.00000000, 1.52866483)),
+        curve(topLeft(0.06549600, 0.66993397), topLeft(0.00000000, 1.08849299), topLeft(0.00000000, 0.86840701)),
+        line(topLeft(0.07491100, 0.63149399)),
+        curve(topLeft(0.63149399, 0.07491100), topLeft(0.16906001, 0.37282401), topLeft(0.37282401, 0.16906001)),
+        curve(topLeft(1.52866483, 0.00000000), topLeft(0.86840701, 0.00000000), topLeft(1.08849299, 0.00000000))
+    }
+end
+
+local function placeFocusBorder(targetWindow)
+    local frame = expandedBorderFrame(targetWindow)
+    focusBorderCanvas:frame(frame)
+    focusBorderCanvas[1].coordinates = continuousBorderCoordinates(frame)
+end
+
 local function showNormalFocusState()
     if focusBorderCanvas and focusedWindow then
-        focusBorderCanvas:frame(expandedBorderFrame(focusedWindow))
+        placeFocusBorder(focusedWindow)
         focusBorderCanvas[1].strokeColor = FOCUS_BORDER_COLOR
         focusBorderCanvas:show()
     end
@@ -135,7 +205,7 @@ local function showStackState(targetWindow, stackIndex, stackSize)
         return
     end
 
-    focusBorderCanvas:frame(expandedBorderFrame(targetWindow))
+    placeFocusBorder(targetWindow)
     focusBorderCanvas[1].strokeColor = STACK_BORDER_COLOR
     focusBorderCanvas:show()
     visibleStackSize = stackSize
@@ -258,7 +328,8 @@ local function drawBorder(targetWindow)
         queryFocusedWindowStack()
         return
     end
-    focusBorderCanvas:frame(expandedBorderFrame(targetWindow)):show()
+    placeFocusBorder(targetWindow)
+    focusBorderCanvas:show()
     moveStackBadge(targetWindow)
     scheduleStackStatusRefresh()
 end
@@ -301,13 +372,18 @@ function focusBorder.start()
         :canvasMouseEvents(false, false, false, false)
         :appendElements({
             {
-                type = "rectangle",
+                type = "segments",
                 action = "stroke",
+                closed = true,
                 strokeColor = FOCUS_BORDER_COLOR,
                 strokeWidth = BORDER_WIDTH,
-                roundedRectRadii = { xRadius = 12, yRadius = 12 },
-                padding = BORDER_WIDTH / 2,
-                frame = { x = "0%", y = "0%", w = "100%", h = "100%" }
+                strokeJoinStyle = "round",
+                coordinates = {
+                    { x = 0, y = 0 },
+                    { x = 1, y = 0 },
+                    { x = 1, y = 1 },
+                    { x = 0, y = 1 }
+                }
             }
         })
 
