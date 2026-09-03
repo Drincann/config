@@ -296,7 +296,7 @@ function focusBorder.start()
                 strokeWidth = BORDER_WIDTH,
                 roundedRectRadii = { xRadius = 12, yRadius = 12 },
                 padding = BORDER_WIDTH / 2,
-                frame = { x = 0, y = 0, w = "100%", h = "100%" }
+                frame = { x = "0%", y = "0%", w = "100%", h = "100%" }
             }
         })
 
