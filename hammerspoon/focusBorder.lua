@@ -10,7 +10,7 @@ local windowFilter = require("hs.window.filter")
 local focusBorder = {}
 
 local YABAI_PATH = "/opt/homebrew/bin/yabai"
-local BORDER_WIDTH = 4
+local BORDER_WIDTH = 6
 local FOCUS_BORDER_COLOR = {
     red = 0xff / 0xff,
     green = 0xcc / 0xff,
